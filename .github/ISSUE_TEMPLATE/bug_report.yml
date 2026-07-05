@@ -1,0 +1,54 @@
+name: Bug report
+description: Report a problem with the plugin
+labels: ["bug"]
+body:
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: A clear description of the bug, including what you expected instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. ...
+        2. ...
+        3. ...
+    validations:
+      required: true
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform
+      options:
+        - iPad (Apple Pencil)
+        - iPad (touch)
+        - Android tablet
+        - Desktop (Windows/macOS/Linux)
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: obsidian-version
+    attributes:
+      label: Obsidian version
+      placeholder: e.g. 1.5.3
+    validations:
+      required: true
+  - type: input
+    id: plugin-version
+    attributes:
+      label: Blackboard version
+      placeholder: e.g. 0.10.3
+    validations:
+      required: true
+  - type: textarea
+    id: extra
+    attributes:
+      label: Screenshots or notes
+      description: Add screenshots, screen recordings, or any other context. Optional.
+    validations:
+      required: false

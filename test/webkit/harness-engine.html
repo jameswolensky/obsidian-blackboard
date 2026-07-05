@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Blackboard engine — WebKit transform harness</title>
+<style>
+  html, body { margin: 0; background: #222; color: #eee; font-family: -apple-system, system-ui, sans-serif; }
+  .panel { margin: 14px; }
+  .label { font-size: 15px; margin-bottom: 4px; white-space: pre-wrap; }
+  .ok { color: #5f5; } .bad { color: #f66; }
+  /* The engine canvases fill their container (CSS 100%); give each a white, bordered box
+     so we can SEE where the drawing sits vs the drawable area. */
+  .surface { position: relative; background: #fff; border: 1px solid #888; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script src="/test/webkit/_engine-harness.js?v=CACHEBUST"></script>
+<script>
+  const { DrawingEngine } = BB;
+  const root = document.getElementById('root');
+
+  // A recognizable shape in content coords ~ (40,40)-(160,120): a box + diagonal.
+  const P = (x, y) => [x, y, 0.5];
+  function stroke(pts, color, size) {
+    return { id: 'x' + pts[0][0] + '_' + pts[0][1] + color, tool: 'pen', color, size, opacity: 1,
+             points: pts.map(([x, y]) => P(x, y)), hasPressure: false, timestamp: 0 };
+  }
+  const BIG = [
+    stroke([[40,40],[160,40],[160,120],[40,120],[40,40]], '#1133cc', 4),
+    stroke([[40,40],[160,120]], '#cc2222', 4),
+  ];
+  const SMALL = [ stroke([[20,20],[70,20],[70,60],[20,60],[20,20]], '#1133cc', 3) ];
+
+  function panel(title, w, h, strokes, fn, check) {
+    const wrap = document.createElement('div'); wrap.className = 'panel';
+    const label = document.createElement('div'); label.className = 'label';
+    const surf = document.createElement('div'); surf.className = 'surface';
+    surf.style.width = w + 'px'; surf.style.height = h + 'px';
+    wrap.appendChild(label); wrap.appendChild(surf); root.appendChild(wrap);
+
+    const e = new DrawingEngine(surf, w, h);
+    e.loadStrokes(strokes);
+    e.setDisplaySize(w, h);
+    fn(e, surf);
+    e.render();
+    const v = e.getViewTransform();
+    const res = check ? check(v, e, surf) : { pass: true, msg: '' };
+    label.textContent = (res.pass ? 'PASS ' : 'FAIL ') + title +
+      `\n   scale=${v.scale.toFixed(3)} off=(${v.offsetX.toFixed(1)},${v.offsetY.toFixed(1)})  ${res.msg}`;
+    label.className = 'label ' + (res.pass ? 'ok' : 'bad');
+    return e;
+  }
+  const near = (a, b, t = 0.5) => Math.abs(a - b) <= t;
+
+  // 1. Fit-to-content: content centered, scaled to fit the 300x200 box.
+  panel('1 fit-to-content (300x200)', 300, 200, BIG, (e) => {
+    const cb = e.getContentBounds(); e.fitReferenceSize(cb.width, cb.height, 8);
+  }, (v) => ({ pass: v.scale > 1.5 && v.scale < 2.3, msg: 'expect scale ~2.0 (fills, centered)' }));
+
+  // 2. Zoom-to-point about top-left (0,0): the focal point stays put -> offsets scale with zoom.
+  panel('2 zoomAt(2x) about (0,0)', 300, 200, BIG, (e) => {
+    const cb = e.getContentBounds(); e.fitReferenceSize(cb.width, cb.height, 8);
+    const before = e.getViewTransform();
+    e.__before = before; e.zoomAt(2, 0, 0);
+  }, (v, e) => {
+    const b = e.__before;
+    // fixed point (0,0): 0*scale+off == 0*newscale+newoff  => offset just scales by factor
+    return { pass: near(v.scale, b.scale * 2, 0.05) && near(v.offsetX, b.offsetX * 2, 1) && near(v.offsetY, b.offsetY * 2, 1),
+             msg: 'focal (0,0) fixed: scale & offset x2' };
+  });
+
+  // 3. Canvas-node EXTEND RIGHT: fit at 200 wide, then resizeBox to 320 wide -> transform UNCHANGED
+  //    (content anchored top-left, blank revealed on the right).
+  panel('3 extend right: resizeBox keeps transform', 320, 200, BIG, (e, surf) => {
+    e.setDisplaySize(200, 200); const cb = e.getContentBounds(); e.fitReferenceSize(cb.width, cb.height, 8);
+    e.__fit = e.getViewTransform();
+    surf.style.width = '320px'; e.resizeBox(320, 200);
+  }, (v, e) => ({ pass: near(v.scale, e.__fit.scale) && near(v.offsetX, e.__fit.offsetX) && near(v.offsetY, e.__fit.offsetY),
+                  msg: 'transform unchanged -> blank on right' }));
+
+  // 4. Canvas-node EXTEND LEFT: resizeBox + panBy(dw,0) -> content anchored to the RIGHT edge.
+  panel('4 extend left: resizeBox + panBy(120,0)', 320, 200, BIG, (e, surf) => {
+    e.setDisplaySize(200, 200); const cb = e.getContentBounds(); e.fitReferenceSize(cb.width, cb.height, 8);
+    e.__fit = e.getViewTransform();
+    surf.style.width = '320px'; e.resizeBox(320, 200); e.panBy(120, 0);
+  }, (v, e) => ({ pass: near(v.offsetX, e.__fit.offsetX + 120), msg: 'offsetX += 120 -> content anchored right' }));
+
+  // 5. SHRINK-CLIP: fit at 300, then resizeBox to 120 wide -> transform unchanged, strokes preserved.
+  panel('5 shrink clips, strokes kept', 120, 200, BIG, (e, surf) => {
+    e.setDisplaySize(300, 200); const cb = e.getContentBounds(); e.fitReferenceSize(cb.width, cb.height, 8);
+    e.__fit = e.getViewTransform(); e.__n = e.strokeManager.strokes.length;
+    surf.style.width = '120px'; e.resizeBox(120, 200);
+  }, (v, e) => ({ pass: near(v.scale, e.__fit.scale) && e.strokeManager.strokes.length === e.__n,
+                  msg: `kept ${e.strokeManager.strokes.length} strokes, clipped` }));
+
+  // 6a. Markdown NO-UPSCALE: small content in a big 300x300 box with maxScale=1 -> scale capped at 1.
+  panel('6a markdown maxScale=1 (no upscale)', 300, 300, SMALL, (e) => {
+    const cb = e.getContentBounds(); e.fitReferenceSize(cb.width, cb.height, 8, 1);
+  }, (v) => ({ pass: near(v.scale, 1, 0.001), msg: 'scale capped at 1.0 (crisp, centered)' }));
+
+  // 6b. Same content UNCAPPED (canvas-node fill) -> scales up to fill, for contrast.
+  panel('6b uncapped fill (contrast)', 300, 300, SMALL, (e) => {
+    const cb = e.getContentBounds(); e.fitReferenceSize(cb.width, cb.height, 8);
+  }, (v) => ({ pass: v.scale > 2, msg: 'uncapped scales up to fill' }));
+
+  // Summary banner.
+  const fails = [...document.querySelectorAll('.label.bad')].length;
+  const banner = document.createElement('div');
+  banner.className = 'label ' + (fails ? 'bad' : 'ok');
+  banner.style.cssText = 'font-size:20px;margin:14px;font-weight:700;';
+  banner.textContent = fails ? `${fails} PANEL(S) FAILED` : 'ALL ENGINE TRANSFORM CHECKS PASS';
+  root.insertBefore(banner, root.firstChild);
+</script>
+</body>
+</html>

@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Blackboard letterbox sizing — WebKit harness</title>
+<style>
+  html, body { background: #161616; color: #dcddde; margin: 0; font-family: -apple-system, system-ui, sans-serif; }
+  .label { padding: 14px 16px 0; font-size: 15px; }
+  .sub { padding: 0 16px 12px; font-size: 13px; color: #8a8a8a; }
+  .row { display: flex; gap: 18px; padding: 12px 16px; align-items: flex-start; flex-wrap: wrap; }
+  .cell { text-align: center; }
+  .cap { font-size: 12px; color: #8a8a8a; margin-top: 6px; }
+  .stage { background: #1e1e1e; border: 1px solid #4a4a4a; border-radius: 8px; }
+  canvas { display: block; }
+</style>
+</head>
+<body class="is-mobile is-tablet is-ios theme-dark">
+<div class="label">Letterbox sizing check — the SAME content (circle + square, drawn in 200×200 drawing-space) rendered into boxes of different aspect ratios via fitContentToBox.</div>
+<div class="sub">PASS = the circle stays a CIRCLE (centered, letterboxed) in every box. FAIL = the circle becomes an OVAL (content was stretched).</div>
+<div class="row" id="row"></div>
+<pre id="dump" style="color:#0f0;font-size:13px;padding:12px 16px;white-space:pre-wrap;"></pre>
+
+<script>
+// Inlined copy of src/domain/geometry.ts fitContentToBox (kept in sync intentionally for the harness).
+function fitContentToBox(box, content, padding) {
+  padding = padding || 0;
+  if (!content || content.width <= 0 || content.height <= 0 || box.width <= 0 || box.height <= 0) {
+    return { scale: 1, offsetX: 0, offsetY: 0 };
+  }
+  const cw = content.width + padding * 2;
+  const ch = content.height + padding * 2;
+  const scale = Math.min(box.width / cw, box.height / ch);
+  const originX = content.x - padding;
+  const originY = content.y - padding;
+  return {
+    scale,
+    offsetX: (box.width - cw * scale) / 2 - originX * scale,
+    offsetY: (box.height - ch * scale) / 2 - originY * scale,
+  };
+}
+
+// Content lives in drawing-space: a 200x200 region with a circle + its bounding square.
+const content = { x: 0, y: 0, width: 200, height: 200 };
+function drawContent(ctx) {
+  ctx.strokeStyle = '#7c6cf0'; ctx.lineWidth = 6;
+  ctx.strokeRect(4, 4, 192, 192);            // square — should stay square
+  ctx.beginPath(); ctx.arc(100, 100, 80, 0, Math.PI * 2); ctx.stroke(); // circle — should stay circular
+  ctx.strokeStyle = '#ff5555'; ctx.lineWidth = 4;
+  ctx.beginPath(); ctx.moveTo(20, 20); ctx.lineTo(180, 180); ctx.stroke(); // diagonal — 45° if undistorted
+}
+
+const boxes = [
+  { w: 200, h: 200, name: 'square 200×200' },
+  { w: 320, h: 140, name: 'wide 320×140' },
+  { w: 140, h: 320, name: 'tall 140×320' },
+];
+const dpr = window.devicePixelRatio || 1;
+const row = document.getElementById('row');
+const lines = [];
+
+for (const b of boxes) {
+  const cell = document.createElement('div'); cell.className = 'cell';
+  const cv = document.createElement('canvas'); cv.className = 'stage';
+  cv.style.width = b.w + 'px'; cv.style.height = b.h + 'px';
+  cv.width = b.w * dpr; cv.height = b.h * dpr;
+  const ctx = cv.getContext('2d');
+  const t = fitContentToBox({ width: b.w, height: b.h }, content, 8);
+  ctx.setTransform(dpr * t.scale, 0, 0, dpr * t.scale, dpr * t.offsetX, dpr * t.offsetY);
+  drawContent(ctx);
+  cell.appendChild(cv);
+  const cap = document.createElement('div'); cap.className = 'cap'; cap.textContent = b.name;
+  cell.appendChild(cap);
+  row.appendChild(cell);
+  lines.push(`${b.name}: scale=${t.scale.toFixed(3)} offset=(${t.offsetX.toFixed(1)}, ${t.offsetY.toFixed(1)})  [uniform scale => no distortion]`);
+}
+document.getElementById('dump').textContent = lines.join('\n');
+</script>
+</body>
+</html>

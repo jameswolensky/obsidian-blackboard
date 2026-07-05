@@ -1,0 +1,72 @@
+name: Version Check
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: ".nvmrc"
+      - name: Validate version consistency
+        run: |
+          MANIFEST_VER=$(node -e "console.log(JSON.parse(require('fs').readFileSync('manifest.json','utf8')).version)")
+          PACKAGE_VER=$(node -e "console.log(JSON.parse(require('fs').readFileSync('package.json','utf8')).version)")
+          MANIFEST_MIN=$(node -e "console.log(JSON.parse(require('fs').readFileSync('manifest.json','utf8')).minAppVersion)")
+
+          echo "manifest.json version: $MANIFEST_VER"
+          echo "package.json version: $PACKAGE_VER"
+          echo "manifest.json minAppVersion: $MANIFEST_MIN"
+
+          if [ "$MANIFEST_VER" != "$PACKAGE_VER" ]; then
+            echo "ERROR: manifest.json version ($MANIFEST_VER) != package.json version ($PACKAGE_VER)"
+            exit 1
+          fi
+
+          HAS_ENTRY=$(node -e "const v=JSON.parse(require('fs').readFileSync('versions.json','utf8')); console.log(v['$MANIFEST_VER'] ? 'yes' : 'no')")
+          if [ "$HAS_ENTRY" != "yes" ]; then
+            echo "ERROR: versions.json missing entry for $MANIFEST_VER"
+            exit 1
+          fi
+
+          echo "All versions consistent"
+
+      - name: Enforce version bump when shippable code changes
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          # Files whose changes ship to users and therefore require a version bump.
+          # docs/, tests, CI config, and dev tooling don't qualify.
+          SHIPPED_PATTERN='^(src/|styles\.css$|manifest\.json$)'
+
+          CHANGED=$(git diff --name-only "$BASE_SHA" "$HEAD_SHA" | grep -E "$SHIPPED_PATTERN" || true)
+          if [ -z "$CHANGED" ]; then
+            echo "No shippable code changed — version bump not required."
+            exit 0
+          fi
+
+          echo "Shippable files changed:"
+          echo "$CHANGED" | sed 's/^/  /'
+
+          BASE_VER=$(git show "$BASE_SHA:manifest.json" | node -e "let s='';process.stdin.on('data',c=>s+=c).on('end',()=>console.log(JSON.parse(s).version))")
+          HEAD_VER=$(node -e "console.log(JSON.parse(require('fs').readFileSync('manifest.json','utf8')).version)")
+
+          echo "Base manifest version: $BASE_VER"
+          echo "Head manifest version: $HEAD_VER"
+
+          if [ "$BASE_VER" = "$HEAD_VER" ]; then
+            echo "ERROR: shippable code changed but manifest.json version is still $HEAD_VER."
+            echo "Bump manifest.json, package.json, and add an entry to versions.json."
+            exit 1
+          fi
+
+          echo "Version bumped $BASE_VER → $HEAD_VER. OK."

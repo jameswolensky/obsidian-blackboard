@@ -1,0 +1,450 @@
+.blackboard-drawing-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.blackboard-static,
+.blackboard-active {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.blackboard-active {
+  background: transparent;
+  pointer-events: auto;
+}
+
+.blackboard-static {
+  pointer-events: none;
+}
+
+.blackboard-canvas-node {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+.blackboard-canvas-node .blackboard-preview-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
+.blackboard-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  color: var(--text-muted);
+  font-size: var(--font-ui-small);
+  user-select: none;
+}
+
+.blackboard-toolbar {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  background: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-m);
+  z-index: 10;
+  white-space: nowrap;
+  max-width: 100%;
+  box-sizing: border-box;
+  /* Keep a single row on narrow embeds (e.g. iPad canvas nodes): scroll horizontally
+     instead of wrapping to multiple rows or clipping controls off-screen. */
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+}
+
+.blackboard-toolbar::-webkit-scrollbar {
+  display: none;
+}
+
+.blackboard-toolbar .toolbar-group {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.blackboard-toolbar .toolbar-separator {
+  width: 1px;
+  height: 20px;
+  background: var(--background-modifier-border);
+  margin: 0 2px;
+  flex-shrink: 0;
+}
+
+.blackboard-toolbar button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
+  min-height: 28px;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-s);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.blackboard-toolbar button:hover {
+  background: var(--background-modifier-hover);
+}
+
+.blackboard-toolbar button.active {
+  color: var(--text-accent);
+  background: var(--background-modifier-hover);
+}
+
+.blackboard-toolbar button svg {
+  width: 16px;
+  height: 16px;
+}
+
+.blackboard-color-swatch {
+  width: 18px !important;
+  height: 18px !important;
+  min-width: 18px !important;
+  min-height: 18px !important;
+  border-radius: 50% !important;
+  border: 2px solid var(--background-modifier-border) !important;
+  padding: 0 !important;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.blackboard-color-swatch:hover {
+  border-color: var(--text-muted) !important;
+}
+
+.blackboard-color-swatch.active {
+  border-color: var(--text-accent) !important;
+}
+
+/* Range slider: the element is tall enough to be a real touch target; the visible
+   track is a thin line drawn via the runnable-track, and the thumb is centered on it
+   with margin-top = (trackHeight - thumbHeight) / 2. */
+.blackboard-size-slider {
+  width: 56px !important;
+  max-width: 56px !important;
+  flex-shrink: 0;
+  height: 16px !important;
+  -webkit-appearance: none !important;
+  appearance: none !important;
+  background: transparent !important;
+  outline: none !important;
+  padding: 0 !important;
+  margin: 0 4px !important;
+  border: none !important;
+}
+
+.blackboard-size-slider::-webkit-slider-runnable-track {
+  height: 4px !important;
+  border-radius: 2px !important;
+  background: var(--background-modifier-border) !important;
+  border: none !important;
+}
+
+.blackboard-size-slider::-webkit-slider-thumb {
+  -webkit-appearance: none !important;
+  appearance: none !important;
+  width: 12px !important;
+  height: 12px !important;
+  border-radius: 50% !important;
+  background: var(--text-normal) !important;
+  cursor: pointer !important;
+  margin-top: -4px !important;
+  border: none !important;
+}
+
+.blackboard-size-slider::-moz-range-track {
+  height: 4px !important;
+  border-radius: 2px !important;
+  background: var(--background-modifier-border) !important;
+  border: none !important;
+}
+
+.blackboard-size-slider::-moz-range-thumb {
+  width: 12px !important;
+  height: 12px !important;
+  border-radius: 50% !important;
+  background: var(--text-normal) !important;
+  cursor: pointer !important;
+  border: none !important;
+}
+
+.blackboard-color-picker-btn {
+  background: conic-gradient(red, yellow, lime, aqua, blue, magenta, red) !important;
+}
+
+.blackboard-toolbar.compact {
+  padding: 3px 6px;
+  gap: 3px;
+}
+
+.blackboard-toolbar.compact button {
+  width: 24px;
+  height: 24px;
+  min-width: 24px;
+  min-height: 24px;
+}
+
+.blackboard-toolbar.compact button svg {
+  width: 14px;
+  height: 14px;
+}
+
+.blackboard-toolbar.compact .blackboard-color-swatch {
+  width: 14px !important;
+  height: 14px !important;
+  min-width: 14px !important;
+  min-height: 14px !important;
+}
+
+
+
+.blackboard-toolbar.compact .toolbar-separator {
+  height: 16px;
+}
+
+.blackboard-embedded-drawing {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  z-index: 10;
+}
+
+.blackboard-embedded-drawing .blackboard-toolbar {
+  position: absolute;
+  bottom: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+}
+
+.blackboard-embed {
+  position: relative;
+  min-height: 200px;
+  border-radius: var(--radius-m);
+  overflow: hidden;
+}
+
+.blackboard-embed .blackboard-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+  color: var(--text-muted);
+}
+
+.blackboard-embed .blackboard-preview-img {
+  width: 100%;
+  display: block;
+}
+
+.blackboard-global-toolbar {
+  position: fixed;
+  z-index: 1000;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: clamp(2px, 0.6vw, 4px);
+  padding: 6px clamp(6px, 1.2vw, 10px);
+  background: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 28px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.blackboard-global-toolbar .blackboard-gt-btn {
+  /* iOS/WKWebView applies native button styling that overrides width/height/
+     border-radius — reset it so the flat radius below holds on WKWebView too. */
+  -webkit-appearance: none;
+  appearance: none;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: clamp(34px, 7vw, 42px);
+  height: clamp(34px, 7vw, 42px);
+  min-width: clamp(34px, 7vw, 42px);
+  padding: 0;
+  border: none;
+  background: transparent;
+  /* Flat tool buttons (pen/highlighter/eraser/undo/redo/insert/collapse): a small
+     radius, matching Obsidian's native controls. Only the color swatches and the
+     rainbow color well (.blackboard-gt-swatch) stay circular. */
+  border-radius: var(--radius-s);
+  color: var(--text-normal);
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.blackboard-global-toolbar .blackboard-gt-btn svg {
+  width: clamp(20px, 4.6vw, 24px);
+  height: clamp(20px, 4.6vw, 24px);
+}
+.blackboard-global-toolbar .blackboard-gt-btn:hover { background: var(--background-modifier-hover); }
+.blackboard-global-toolbar .blackboard-gt-btn.active { color: var(--text-on-accent); background: var(--interactive-accent); }
+.blackboard-global-toolbar .blackboard-gt-btn:disabled { opacity: 0.4; cursor: default; }
+
+.blackboard-global-toolbar .blackboard-gt-sep {
+  width: 1px;
+  height: 24px;
+  background: var(--background-modifier-border);
+  flex-shrink: 0;
+  margin: 0 2px;
+}
+
+.blackboard-gt-swatch {
+  /* See .blackboard-gt-btn: reset native iOS button styling so swatches stay
+     perfectly circular on WKWebView. */
+  -webkit-appearance: none;
+  appearance: none;
+  box-sizing: border-box;
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
+  border-radius: 50%;
+  border: 2px solid var(--background-modifier-border);
+  padding: 0;
+  cursor: pointer;
+  touch-action: manipulation;
+  flex-shrink: 0;
+}
+.blackboard-gt-colorwell {
+  position: relative;
+  width: clamp(30px, 6.5vw, 36px);
+  height: clamp(30px, 6.5vw, 36px);
+  min-width: clamp(30px, 6.5vw, 36px);
+  background: conic-gradient(red, yellow, lime, aqua, blue, magenta, red);
+}
+/* No-surface state: the color well is disabled until a drawing is active. */
+.blackboard-gt-colorwell:disabled { opacity: 0.4; cursor: default; }
+
+.blackboard-gt-popover {
+  position: fixed;
+  z-index: 1001;
+  background: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 12px;
+  padding: 10px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+  touch-action: none;
+}
+.blackboard-gt-swatches {
+  display: grid;
+  grid-template-columns: repeat(4, 28px);
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.blackboard-gt-wheel { display: flex; justify-content: center; }
+
+.blackboard-gt-popover-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+  text-align: center;
+}
+.blackboard-gt-size-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.blackboard-gt-size-dot {
+  -webkit-appearance: none;
+  appearance: none;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: transparent;
+  border-radius: 8px;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.blackboard-gt-size-dot:hover { background: var(--background-modifier-hover); }
+/* Selected size dot gets the same purple accent fill as the selected tool button
+   (.blackboard-gt-btn.active), so the chosen brush size reads as selected (QA3). */
+.blackboard-gt-size-dot.active { background: var(--interactive-accent); }
+.blackboard-gt-size-dot-inner { background: var(--text-normal); border-radius: 50%; }
+/* On the accent fill, the inner dot switches to the on-accent colour to stay visible. */
+.blackboard-gt-size-dot.active .blackboard-gt-size-dot-inner { background: var(--text-on-accent); }
+
+/* iPad ONLY: Obsidian's `.is-tablet button:not(.clickable-icon)` rule (specificity
+   0,2,1) injects padding into every <button>, beating our class selectors (0,2,0)
+   and turning the round controls into ovals with their icons clipped to nothing.
+   It's gated on `.is-tablet`, which is why desktop is unaffected. Force our own
+   geometry back. Root cause verified in real iPad WebKit via test/webkit. */
+.blackboard-global-toolbar .blackboard-gt-btn,
+.blackboard-gt-swatch,
+.blackboard-gt-colorwell,
+.blackboard-gt-size-dot {
+  padding: 0 !important;
+  box-sizing: border-box !important;
+}
+.blackboard-global-toolbar .blackboard-gt-btn {
+  width: clamp(34px, 7vw, 42px) !important;
+  height: clamp(34px, 7vw, 42px) !important;
+  min-width: clamp(34px, 7vw, 42px) !important;
+}
+.blackboard-gt-swatch {
+  width: 28px !important;
+  height: 28px !important;
+  min-width: 28px !important;
+}
+.blackboard-gt-colorwell {
+  width: clamp(30px, 6.5vw, 36px) !important;
+  height: clamp(30px, 6.5vw, 36px) !important;
+  min-width: clamp(30px, 6.5vw, 36px) !important;
+}
+.blackboard-gt-size-dot {
+  width: 32px !important;
+  height: 32px !important;
+  min-width: 32px !important;
+}
+
+.blackboard-global-toolbar-pill {
+  position: fixed;
+  z-index: 1000;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  background: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 50%;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+  color: var(--text-normal);
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.blackboard-global-toolbar-pill svg { width: 28px; height: 28px; }

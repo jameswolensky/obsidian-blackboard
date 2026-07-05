@@ -1,0 +1,49 @@
+name: Release
+on:
+  push:
+    tags: ["*.*.*"]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: ".nvmrc"
+          cache: "npm"
+
+      - run: npm ci
+
+      - name: Verify tag matches manifest + versions.json
+        run: |
+          TAG="${GITHUB_REF#refs/tags/}"
+          MANIFEST_VER=$(node -e "console.log(require('./manifest.json').version)")
+          echo "tag=$TAG manifest=$MANIFEST_VER"
+          if [ "$TAG" != "$MANIFEST_VER" ]; then
+            echo "ERROR: tag ($TAG) != manifest.json version ($MANIFEST_VER)."
+            echo "Release tags must equal the manifest version. Use 'npm run release:patch'."
+            exit 1
+          fi
+          if ! node -e "const v=require('./versions.json'); process.exit(v['$TAG']?0:1)"; then
+            echo "ERROR: versions.json has no entry for $TAG."
+            exit 1
+          fi
+
+      - name: Validate (typecheck + tests + build)
+        run: npm run check
+
+      - name: Create GitHub release with plugin assets
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${GITHUB_REF#refs/tags/}"
+          FILES="main.js manifest.json"
+          [ -e styles.css ] && FILES="$FILES styles.css"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" $FILES --clobber
+          else
+            gh release create "$TAG" --title "$TAG" --generate-notes $FILES
+          fi

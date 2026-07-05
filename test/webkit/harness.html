@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Blackboard toolbar — WebKit harness</title>
+<!-- Obsidian's REAL app.css FIRST (full cascade incl. global `button {}` rules),
+     then the plugin stylesheet — exactly the order Obsidian injects them. -->
+<link rel="stylesheet" href="/test/webkit/obsidian-app.css?v=CACHEBUST" />
+<link rel="stylesheet" href="/styles.css?v=CACHEBUST" />
+<style>
+  html, body { background: var(--background-primary); margin: 0; padding: 0; }
+  body { font-family: -apple-system, system-ui, sans-serif; color: var(--text-normal); }
+  .harness-label { padding: 16px; font-size: 14px; color: var(--text-muted); }
+  /* Harness-only: the real CSS sets position:fixed (JS positions it). Pin it to
+     static here so it's visible; this does NOT affect button width/height/
+     border-radius/appearance, which is what we're testing. */
+  .blackboard-global-toolbar { position: static !important; margin: 24px auto; width: max-content; }
+  .blackboard-gt-popover { position: static !important; margin: 24px auto; width: max-content; }
+</style>
+</head>
+<!-- Real Obsidian mobile body classes so .is-mobile / theme cascade applies. -->
+<body class="is-mobile is-tablet is-ios theme-dark mod-macos">
+<div class="harness-label">WebKit render check — tool buttons must be flat (small-radius) rounded rects, the color well must stay circular, and all icons must be visible.</div>
+
+<!-- Mirrors GlobalToolbar.build() DOM exactly. -->
+<div class="blackboard-global-toolbar">
+  <button class="blackboard-gt-btn active" data-tool="pen" aria-label="Pen"></button>
+  <button class="blackboard-gt-btn" data-tool="highlighter" aria-label="Highlighter"></button>
+  <button class="blackboard-gt-btn" data-tool="eraser" aria-label="Eraser"></button>
+  <div class="blackboard-gt-sep"></div>
+  <button class="blackboard-gt-swatch blackboard-gt-colorwell" aria-label="Color"></button>
+  <button class="blackboard-gt-btn blackboard-gt-size-btn" aria-label="Brush size"></button>
+  <div class="blackboard-gt-sep"></div>
+  <button class="blackboard-gt-btn" data-action="undo" aria-label="Undo"></button>
+  <button class="blackboard-gt-btn" data-action="redo" aria-label="Redo"></button>
+  <div class="blackboard-gt-sep"></div>
+  <button class="blackboard-gt-btn" data-action="new-drawing" aria-label="New drawing"></button>
+  <button class="blackboard-gt-btn" data-action="insert-existing" aria-label="Insert existing drawing"></button>
+  <div class="blackboard-gt-sep"></div>
+  <button class="blackboard-gt-btn" aria-label="Minimize toolbar"></button>
+</div>
+
+<div class="harness-label">No-surface state — only New + Insert enabled; the rest is disabled (greyed).</div>
+
+<!-- No-surface (host-only) state: surface controls disabled, new/insert enabled. -->
+<div class="blackboard-global-toolbar" id="no-surface">
+  <button class="blackboard-gt-btn" data-tool="pen" aria-label="Pen" disabled></button>
+  <button class="blackboard-gt-btn" data-tool="highlighter" aria-label="Highlighter" disabled></button>
+  <button class="blackboard-gt-btn" data-tool="eraser" aria-label="Eraser" disabled></button>
+  <div class="blackboard-gt-sep"></div>
+  <button class="blackboard-gt-swatch blackboard-gt-colorwell" aria-label="Color" disabled></button>
+  <button class="blackboard-gt-btn blackboard-gt-size-btn" aria-label="Brush size" disabled></button>
+  <div class="blackboard-gt-sep"></div>
+  <button class="blackboard-gt-btn" data-action="undo" aria-label="Undo" disabled></button>
+  <button class="blackboard-gt-btn" data-action="redo" aria-label="Redo" disabled></button>
+  <div class="blackboard-gt-sep"></div>
+  <button class="blackboard-gt-btn" data-action="new-drawing" aria-label="New drawing"></button>
+  <button class="blackboard-gt-btn" data-action="insert-existing" aria-label="Insert existing drawing"></button>
+  <div class="blackboard-gt-sep"></div>
+  <button class="blackboard-gt-btn" aria-label="Minimize toolbar"></button>
+</div>
+
+<div class="harness-label">Collapsed pill — the persistent affordance on every Markdown/Canvas page.</div>
+<div class="blackboard-global-toolbar-pill" style="position:static;margin:8px auto;"></div>
+
+<!-- Color popover (preset swatches = the "ovals" the user reported). -->
+<div class="blackboard-gt-popover blackboard-gt-color-popover">
+  <div class="blackboard-gt-swatches"></div>
+  <div class="blackboard-gt-wheel"><div style="width:150px;height:150px;border-radius:50%;background:conic-gradient(red,yellow,lime,aqua,blue,magenta,red)"></div></div>
+</div>
+
+<div class="harness-label">Size popover — PEN scale [2,4,8,16,30], size 8 selected (purple = selected, QA3).</div>
+<div class="blackboard-gt-popover blackboard-gt-size-popover" id="size-pen">
+  <div class="blackboard-gt-popover-label">Brush size</div>
+  <div class="blackboard-gt-size-row"></div>
+</div>
+
+<div class="harness-label">Size popover — HIGHLIGHTER scale [8,14,22,32,44], size 22 selected (wider dots, QA4).</div>
+<div class="blackboard-gt-popover blackboard-gt-size-popover" id="size-hl">
+  <div class="blackboard-gt-popover-label">Brush size</div>
+  <div class="blackboard-gt-size-row"></div>
+</div>
+
+<script>
+  // Inline SVGs copied verbatim from src/presentation/toolbar-icons.ts.
+  const svg = (b) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${b}</svg>`;
+  const ICONS = {
+    pen: svg('<path d="M4 20l4-1L19 8l-3-3L6 16l-2 4z"/><path d="M14 7l3 3"/>'),
+    highlighter: svg('<path d="M9 11l6-6a2 2 0 0 1 3 3l-6 6z"/><path d="M9 11l-4 4v4h4l4-4"/><path d="M4 21h16"/>'),
+    eraser: svg('<g transform="rotate(-45 12 12)"><rect x="4" y="9" width="16" height="7" rx="2"/><line x1="12" y1="9" x2="12" y2="16"/></g><path d="M5 21h14"/>'),
+    size: svg('<circle cx="7" cy="12" r="2" fill="currentColor" stroke="none"/><circle cx="16" cy="12" r="4" fill="currentColor" stroke="none"/>'),
+    undo: svg('<path d="M9 14L4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 0 10h-6"/>'),
+    redo: svg('<path d="M15 14l5-5-5-5"/><path d="M20 9H9a5 5 0 0 0 0 10h6"/>'),
+    collapse: svg('<path d="M7 4l5 5 5-5"/><path d="M7 20l5-5 5 5"/>'),
+    plus: svg('<line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>'),
+    'insert-existing': svg('<rect x="3" y="4" width="12" height="12" rx="2"/><circle cx="7" cy="8" r="1.2" fill="currentColor" stroke="none"/><path d="M3 13l3-3 2 2 3-3 4 4"/><line x1="18" y1="14" x2="18" y2="20"/><line x1="15" y1="17" x2="21" y2="17"/>'),
+  };
+  const byTool = { pen: 'pen', highlighter: 'highlighter', eraser: 'eraser' };
+  document.querySelectorAll('[data-tool]').forEach((b) => (b.innerHTML = ICONS[byTool[b.dataset.tool]]));
+  // Sized white-circle glyph for the brush-size button — verbatim from
+  // setSizeDotIcon() in src/presentation/toolbar-icons.ts (size 8 shown here).
+  const sizeDot = (size) => {
+    const d = Math.max(4, Math.min(22, size));
+    return `<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="${d / 2}" fill="#ffffff" stroke="none"/></svg>`;
+  };
+  document.querySelectorAll('.blackboard-gt-size-btn').forEach((b) => (b.innerHTML = sizeDot(8)));
+  // Tool glyphs tint to their tool's colour (pen red, highlighter yellow); eraser stays untinted.
+  document.querySelectorAll('.blackboard-global-toolbar:not(#no-surface) [data-tool="pen"]').forEach((b) => (b.style.color = '#ff0000'));
+  document.querySelectorAll('.blackboard-global-toolbar:not(#no-surface) [data-tool="highlighter"]').forEach((b) => (b.style.color = '#ffff00'));
+  document.querySelectorAll('[data-action="undo"]').forEach((b) => (b.innerHTML = ICONS.undo));
+  document.querySelectorAll('[data-action="redo"]').forEach((b) => (b.innerHTML = ICONS.redo));
+  document.querySelectorAll('[aria-label="Minimize toolbar"]').forEach((b) => (b.innerHTML = ICONS.collapse));
+  document.querySelectorAll('[data-action="new-drawing"]').forEach((b) => (b.innerHTML = ICONS.plus));
+  document.querySelectorAll('[data-action="insert-existing"]').forEach((b) => (b.innerHTML = ICONS['insert-existing']));
+  document.querySelector('.blackboard-global-toolbar-pill').innerHTML = ICONS.pen;
+
+  // Size dots — mirrors rebuildSizeDots() in src/presentation/global-toolbar.ts:
+  // diameter graded WITHIN the active scale (6px smallest .. 22px largest), the dot whose
+  // size === active marked `.active` (purple accent fill via styles.css).
+  function fillSizeRow(rowSel, sizes, active) {
+    const row = document.querySelector(rowSel);
+    const min = sizes[0], max = sizes[sizes.length - 1];
+    sizes.forEach((size) => {
+      const dot = document.createElement('button');
+      dot.className = 'blackboard-gt-size-dot' + (size === active ? ' active' : '');
+      dot.dataset.size = String(size);
+      const inner = document.createElement('div');
+      inner.className = 'blackboard-gt-size-dot-inner';
+      const t = max === min ? 0 : (size - min) / (max - min);
+      const d = Math.round(6 + t * 16);
+      inner.style.width = d + 'px';
+      inner.style.height = d + 'px';
+      dot.appendChild(inner);
+      row.appendChild(dot);
+    });
+  }
+  fillSizeRow('#size-pen .blackboard-gt-size-row', [2, 4, 8, 16, 30], 8);
+  fillSizeRow('#size-hl .blackboard-gt-size-row', [8, 14, 22, 32, 44], 22);
+
+  const PRESETS = ['#000000', '#ffffff', '#ff0000', '#0000ff', '#00ff00', '#ffff00', '#ffa500', '#800080'];
+  const grid = document.querySelector('.blackboard-gt-swatches');
+  PRESETS.forEach((c) => {
+    const b = document.createElement('button');
+    b.className = 'blackboard-gt-swatch';
+    b.style.backgroundColor = c;
+    grid.appendChild(b);
+  });
+
+  // Dump computed geometry visibly so a screenshot shows the numbers.
+  const dump = (sel, i) => {
+    const el = document.querySelectorAll(sel)[i || 0];
+    if (!el) return sel + ': (missing)';
+    const r = el.getBoundingClientRect();
+    const cs = getComputedStyle(el);
+    return `${sel}\n  rect ${r.width.toFixed(1)} x ${r.height.toFixed(1)}  ${Math.abs(r.width - r.height) > 1.5 ? 'OVAL' : 'circle'}\n` +
+      `  w=${cs.width} h=${cs.height} minW=${cs.minWidth} maxH=${cs.maxHeight}\n` +
+      `  pad=${cs.padding} box=${cs.boxSizing} disp=${cs.display}\n` +
+      `  flex=${cs.flex} alignSelf=${cs.alignSelf} alignItems(parent)=${getComputedStyle(el.parentElement).alignItems}`;
+  };
+  const pre = document.createElement('pre');
+  pre.style.cssText = 'color:#0f0;font-size:20px;line-height:1.4;padding:16px;white-space:pre-wrap;';
+  pre.textContent = [
+    dump('.blackboard-gt-btn'),
+    dump('.blackboard-gt-colorwell'),
+    dump('.blackboard-gt-color-popover .blackboard-gt-swatch'),
+    'icon svg present: ' + !!document.querySelector('.blackboard-gt-btn svg'),
+  ].join('\n\n');
+  document.body.appendChild(pre);
+</script>
+</body>
+</html>

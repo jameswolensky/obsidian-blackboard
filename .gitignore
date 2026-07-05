@@ -1,0 +1,16 @@
+.DS_Store
+.kanbots/
+.obsidian-cache
+*.js.map
+coverage/
+data.json
+main.js
+node_modules/
+test/e2e/artifacts/
+test/e2e/screenshots/
+test/webkit/_run.html
+test/webkit/obsidian-app.css
+test/webkit/_engine.mjs
+test/webkit/_run-align.html
+test/webkit/_engine-harness.js
+test/webkit/_run-engine.html
