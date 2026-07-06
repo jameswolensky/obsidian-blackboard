@@ -164,6 +164,11 @@ iPad-specific rendering (Apple WebKit) can't be reproduced by the desktop/Electr
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for the contribution workflow and conventions.
 
+## Built with
+
+- [perfect-freehand](https://github.com/steveruizok/perfect-freehand) (MIT) — pressure-sensitive stroke geometry
+- [iro.js](https://github.com/jaames/iro.js) (MPL-2.0) — the color wheel
+
 ## License
 
 [MIT](LICENSE) © James Wolensky
