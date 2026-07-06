@@ -7,17 +7,8 @@ import type { ToolManager } from '../domain/tool-manager';
 import type { IDrawingRepository } from '../domain/ports';
 import type { DocumentStore, SharedDocumentHandle } from '../application/document-store';
 import { eraseAtPoint } from '../application/eraser-service';
-import { inputDebugEnabled, inputDebugLog } from './input-debug';
 import type { SurfaceManager } from './surface-manager';
 import { engineSurface, type DrawingSurface } from './drawing-surface';
-
-function dbgTarget(t: EventTarget | null): string {
-  const el = t as HTMLElement | null;
-  if (!el || !el.tagName) return '?';
-  const cls = typeof el.className === 'string' && el.className.trim() ? '.' + el.className.trim().split(/\s+/)[0] : '';
-  return el.tagName.toLowerCase() + cls;
-}
-
 
 export const VIEW_TYPE = 'blackboard-view';
 export { FILE_EXTENSION };
@@ -435,9 +426,6 @@ export class BlackboardView extends TextFileView {
     const onDocPointerDown = (e: PointerEvent) => {
       const inside = isInsideDrawing(e);
       const drawInput = isDrawingInput(e);
-      if (inputDebugEnabled()) {
-        inputDebugLog(`DOWN ${e.pointerType} in=${inside ? 'Y' : 'N'} draw=${drawInput ? 'Y' : 'N'} tgt=${dbgTarget(e.target)}${inside && drawInput ? ' OK' : ' REJECT'}`);
-      }
       if (!inside) return;
 
       // Standalone finger navigation: a touch pans/pinch-zooms the view, it never draws.
@@ -554,7 +542,6 @@ export class BlackboardView extends TextFileView {
       // Re-sync the toolbar (undo/redo enablement) the instant a stroke or erase commits,
       // so the undo arrow lights up immediately rather than on the next tap (QA3).
       this.surfaceManager?.notifyStrokeEnd();
-      if (inputDebugEnabled()) inputDebugLog(`UP committed total=${engine.strokeManager.strokes.length}`);
     };
 
     document.addEventListener('pointerdown', onDocPointerDown, true);
