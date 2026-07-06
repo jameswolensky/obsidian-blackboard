@@ -50,8 +50,19 @@ export const ICONS: Record<IconName, string> = {
   ),
 };
 
+/**
+ * Turn a trusted, static SVG string into a real DOM node (no `innerHTML` — Obsidian's
+ * review guidelines forbid it). Parsing the exact same markup keeps rendering identical
+ * across platforms, which is the whole reason we ship our own SVGs (see the file header).
+ */
+function svgToNode(markup: string): Node {
+  const doc = new DOMParser().parseFromString(markup, 'image/svg+xml');
+  return document.importNode(doc.documentElement, true);
+}
+
 export function setToolbarIcon(el: HTMLElement, name: IconName): void {
-  el.innerHTML = ICONS[name];
+  el.empty();
+  el.appendChild(svgToNode(ICONS[name]));
 }
 
 /**
@@ -71,7 +82,9 @@ export function sizeToDotDiameter(size: number): number {
  */
 export function setSizeDotIcon(el: HTMLElement, size: number): void {
   const d = sizeToDotDiameter(size);
-  el.innerHTML =
+  el.empty();
+  el.appendChild(svgToNode(
     `<svg viewBox="0 0 24 24" fill="none" aria-hidden="true">` +
-    `<circle cx="12" cy="12" r="${d / 2}" fill="#ffffff" stroke="none"/></svg>`;
+    `<circle cx="12" cy="12" r="${d / 2}" fill="#ffffff" stroke="none"/></svg>`,
+  ));
 }
