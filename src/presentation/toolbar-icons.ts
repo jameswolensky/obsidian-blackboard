@@ -57,7 +57,7 @@ export const ICONS: Record<IconName, string> = {
  */
 function svgToNode(markup: string): Node {
   const doc = new DOMParser().parseFromString(markup, 'image/svg+xml');
-  return document.importNode(doc.documentElement, true);
+  return activeDocument.importNode(doc.documentElement, true);
 }
 
 export function setToolbarIcon(el: HTMLElement, name: IconName): void {

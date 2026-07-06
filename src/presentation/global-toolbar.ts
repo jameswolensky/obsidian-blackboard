@@ -101,7 +101,7 @@ export class GlobalToolbar {
   private measureSafeBottom(): void {
     const probe = createDiv();
     probe.className = 'blackboard-safe-area-probe';
-    document.body.appendChild(probe);
+    activeDocument.body.appendChild(probe);
     this.safeBottom = probe.getBoundingClientRect().height || 0;
     probe.remove();
   }

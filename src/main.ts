@@ -107,7 +107,7 @@ export default class BlackboardPlugin extends Plugin {
     patchCanvas(this.app, this, this.settings, this.repo, this.createDrawingUseCase, this.surfaceManager, this.toolManager, this.documentStore);
 
     const processEmbeds = () => {
-      const embeds = document.querySelectorAll('.internal-embed.mod-generic.is-loaded');
+      const embeds = activeDocument.querySelectorAll('.internal-embed.mod-generic.is-loaded');
       embeds.forEach((embedEl) => {
         const src = (embedEl as HTMLElement).getAttribute('src') || '';
         if (!src.endsWith('.' + FILE_EXTENSION)) return;
@@ -138,7 +138,7 @@ export default class BlackboardPlugin extends Plugin {
 
     const embedObserver = new MutationObserver(processEmbeds);
     this.registerEvent(this.app.workspace.on('layout-change', () => {
-      const activeEl = document.querySelector('.workspace-leaf.mod-active .view-content');
+      const activeEl = activeDocument.querySelector('.workspace-leaf.mod-active .view-content');
       if (activeEl && !(activeEl as HTMLElement).dataset.bbObserved) {
         (activeEl as HTMLElement).dataset.bbObserved = 'true';
         embedObserver.observe(activeEl, { childList: true, subtree: true });

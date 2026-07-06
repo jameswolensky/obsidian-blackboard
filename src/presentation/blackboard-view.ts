@@ -313,7 +313,7 @@ export class BlackboardView extends TextFileView {
       if (listener.type === '__observer__') {
         listener.fn(null);
       } else {
-        document.removeEventListener(listener.type, listener.fn, listener.capture);
+        activeDocument.removeEventListener(listener.type, listener.fn, listener.capture);
       }
     }
     this.docListeners = [];
@@ -546,9 +546,9 @@ export class BlackboardView extends TextFileView {
       this.surfaceManager?.notifyStrokeEnd();
     };
 
-    document.addEventListener('pointerdown', onDocPointerDown, true);
-    document.addEventListener('pointermove', onDocPointerMove, true);
-    document.addEventListener('pointerup', onDocPointerUp, true);
+    activeDocument.addEventListener('pointerdown', onDocPointerDown, true);
+    activeDocument.addEventListener('pointermove', onDocPointerMove, true);
+    activeDocument.addEventListener('pointerup', onDocPointerUp, true);
 
     this.docListeners.push({ type: 'pointerdown', fn: onDocPointerDown, capture: true });
     this.docListeners.push({ type: 'pointermove', fn: onDocPointerMove, capture: true });
@@ -577,8 +577,8 @@ export class BlackboardView extends TextFileView {
       const onKeyUp = (e: KeyboardEvent) => {
         if (e.code === 'Space') { this.spaceDown = false; this.spacePanActive = false; this.spacePanPrev = null; }
       };
-      document.addEventListener('keydown', onKeyDown, true);
-      document.addEventListener('keyup', onKeyUp, true);
+      activeDocument.addEventListener('keydown', onKeyDown, true);
+      activeDocument.addEventListener('keyup', onKeyUp, true);
       this.docListeners.push({ type: 'keydown', fn: onKeyDown, capture: true });
       this.docListeners.push({ type: 'keyup', fn: onKeyUp, capture: true });
     }

@@ -20,7 +20,7 @@ function isDrawingInput(e: PointerEvent): boolean {
  * editable/CodeMirror element; never steal focus from anything else.
  */
 function suppressEditorFocus(): void {
-  const active = document.activeElement as HTMLElement | null;
+  const active = activeDocument.activeElement as HTMLElement | null;
   if (!active || typeof active.blur !== 'function') return;
   const isEditor = active.isContentEditable || active.closest('.cm-editor') !== null;
   if (isEditor) active.blur();
@@ -257,9 +257,9 @@ export async function mountBlackboardEmbed(repo: IDrawingRepository, embedEl: HT
     void saveDrawing();
   };
 
-  document.addEventListener('pointerdown', onDocPointerDown, true);
-  document.addEventListener('pointermove', onDocPointerMove, true);
-  document.addEventListener('pointerup', onDocPointerUp, true);
+  activeDocument.addEventListener('pointerdown', onDocPointerDown, true);
+  activeDocument.addEventListener('pointermove', onDocPointerMove, true);
+  activeDocument.addEventListener('pointerup', onDocPointerUp, true);
   docListeners.push({ type: 'pointerdown', fn: onDocPointerDown, capture: true });
   docListeners.push({ type: 'pointermove', fn: onDocPointerMove, capture: true });
   docListeners.push({ type: 'pointerup', fn: onDocPointerUp, capture: true });
@@ -302,14 +302,14 @@ export async function mountBlackboardEmbed(repo: IDrawingRepository, embedEl: HT
       t.clientY >= rect.top - m && t.clientY <= rect.bottom + m;
     if (within) e.preventDefault();
   };
-  document.addEventListener('touchstart', blockScribbleDoc, { passive: false, capture: true });
-  document.addEventListener('touchmove', blockScribbleDoc, { passive: false, capture: true });
+  activeDocument.addEventListener('touchstart', blockScribbleDoc, { passive: false, capture: true });
+  activeDocument.addEventListener('touchmove', blockScribbleDoc, { passive: false, capture: true });
   docListeners.push({ type: 'touchstart', fn: blockScribbleDoc, capture: true });
   docListeners.push({ type: 'touchmove', fn: blockScribbleDoc, capture: true });
 
   return () => {
     for (const l of docListeners) {
-      if (l.type === '__observer__') { l.fn(null); } else { document.removeEventListener(l.type, l.fn, l.capture); }
+      if (l.type === '__observer__') { l.fn(null); } else { activeDocument.removeEventListener(l.type, l.fn, l.capture); }
     }
     embedEl.removeEventListener('touchstart', blockScribble);
     embedEl.removeEventListener('touchmove', blockScribble);
