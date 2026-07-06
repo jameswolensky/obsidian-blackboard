@@ -162,7 +162,7 @@ export class BlackboardView extends TextFileView {
     } else {
       // Standalone: an infinite pan + zoom canvas. The surface fills the pane and
       // navigation is via the view transform (pan/zoom), NOT document scroll.
-      container.style.position = 'relative';
+      container.addClass('blackboard-standalone-host');
       this.layoutStandalone();
       this.resizeObserver = new ResizeObserver(() => this.layoutStandalone());
       this.resizeObserver.observe(container);

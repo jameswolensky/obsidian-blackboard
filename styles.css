@@ -13,6 +13,23 @@
   height: 100%;
 }
 
+/* Standalone view host: positioning context for the pan/zoom surface. */
+.blackboard-standalone-host {
+  position: relative;
+}
+
+/* Probe for env(safe-area-inset-bottom) so the toolbar clears the iPad home
+   indicator. Measured then removed; never visible. */
+.blackboard-safe-area-probe {
+  position: fixed;
+  left: 0;
+  bottom: 0;
+  width: 0;
+  height: env(safe-area-inset-bottom);
+  visibility: hidden;
+  pointer-events: none;
+}
+
 .blackboard-active {
   background: transparent;
   pointer-events: auto;

@@ -90,8 +90,7 @@ export class GlobalToolbar {
    * iPad home indicator. Zero on desktop. */
   private measureSafeBottom(): void {
     const probe = document.createElement('div');
-    probe.style.cssText =
-      'position:fixed;left:0;bottom:0;width:0;height:env(safe-area-inset-bottom);visibility:hidden;pointer-events:none;';
+    probe.className = 'blackboard-safe-area-probe';
     document.body.appendChild(probe);
     this.safeBottom = probe.getBoundingClientRect().height || 0;
     probe.remove();

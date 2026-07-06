@@ -43,21 +43,12 @@ export class DrawingEngine {
     this.drawingWidth = width ?? (container.clientWidth || 800);
     this.drawingHeight = height ?? (container.clientHeight || 600);
 
+    // Layout (absolute, full-bleed) lives in styles.css under .blackboard-static/.blackboard-active.
     this.staticCanvas = document.createElement('canvas');
     this.staticCanvas.className = 'blackboard-static';
-    this.staticCanvas.style.position = 'absolute';
-    this.staticCanvas.style.top = '0';
-    this.staticCanvas.style.left = '0';
-    this.staticCanvas.style.width = '100%';
-    this.staticCanvas.style.height = '100%';
 
     this.activeCanvas = document.createElement('canvas');
     this.activeCanvas.className = 'blackboard-active';
-    this.activeCanvas.style.position = 'absolute';
-    this.activeCanvas.style.top = '0';
-    this.activeCanvas.style.left = '0';
-    this.activeCanvas.style.width = '100%';
-    this.activeCanvas.style.height = '100%';
 
     container.appendChild(this.staticCanvas);
     container.appendChild(this.activeCanvas);
