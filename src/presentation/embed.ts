@@ -1,5 +1,5 @@
 import type { IDrawingRepository } from '../domain/ports';
-import type { BlackboardFile, PluginSettings } from '../domain/entities';
+import type { BlackboardFile, PluginSettings, Stroke } from '../domain/entities';
 import { DrawingEngine } from '../infrastructure/canvas-renderer';
 import type { ToolManager } from '../domain/tool-manager';
 import { eraseAtPoint } from '../application/eraser-service';
@@ -31,9 +31,7 @@ export async function mountBlackboardEmbed(repo: IDrawingRepository, embedEl: HT
   embedEl.dataset.bbMounted = 'true';
   embedEl.empty();
   embedEl.addClass('blackboard-embed');
-  embedEl.style.position = 'relative';
-  embedEl.style.display = 'flex';
-  embedEl.style.flexDirection = 'column';
+  embedEl.setCssStyles({ position: 'relative', display: 'flex', flexDirection: 'column' });
 
   // The shared document is the single source of truth for this path: the engine renders
   // from its canonical strokes and writes through it, so sibling surfaces stay in sync
@@ -45,12 +43,9 @@ export async function mountBlackboardEmbed(repo: IDrawingRepository, embedEl: HT
   // scale-stable (B3).
   const refFile = () => (handle ? handle.getFile() : file);
 
-  const drawingContainer = document.createElement('div');
+  const drawingContainer = createDiv();
   drawingContainer.className = 'blackboard-drawing-container blackboard-embedded-drawing';
-  drawingContainer.style.position = 'relative';
-  drawingContainer.style.width = '100%';
-  drawingContainer.style.flex = '1';
-  drawingContainer.style.minHeight = '150px';
+  drawingContainer.setCssStyles({ position: 'relative', width: '100%', flex: '1', minHeight: '150px' });
   embedEl.appendChild(drawingContainer);
 
   // Display size is measured from the drawing surface element (the same one the pointer
@@ -65,7 +60,9 @@ export async function mountBlackboardEmbed(repo: IDrawingRepository, embedEl: HT
   embedEl.addEventListener('click', (e) => { e.stopPropagation(); e.stopImmediatePropagation(); }, true);
   embedEl.addEventListener('dblclick', (e) => { e.stopPropagation(); e.stopImmediatePropagation(); }, true);
 
-  const docListeners: Array<{ type: string; fn: (e: any) => void; capture: boolean }> = [];
+  // Method syntax (bivariant params) so specific DOM handlers like (e: PointerEvent) => void
+  // assign cleanly, while cleanup can still call fn (with a null placeholder for observers).
+  const docListeners: Array<{ type: string; fn(this: void, e: unknown): void; capture: boolean }> = [];
 
   let canvasNode: HTMLElement | null = null;
   let el: HTMLElement | null = embedEl;
@@ -75,8 +72,8 @@ export async function mountBlackboardEmbed(repo: IDrawingRepository, embedEl: HT
   }
   if (canvasNode) {
     const hideBlocker = () => {
-      const blocker = canvasNode!.querySelector('.canvas-node-content-blocker') as HTMLElement | null;
-      if (blocker) blocker.style.display = 'none';
+      const blocker = canvasNode.querySelector('.canvas-node-content-blocker');
+      if (blocker) (blocker as HTMLElement).setCssStyles({ display: 'none' });
     };
     hideBlocker();
     const observer = new MutationObserver(hideBlocker);
@@ -162,17 +159,17 @@ export async function mountBlackboardEmbed(repo: IDrawingRepository, embedEl: HT
         version: 3,
         width: b.width || 800,
         height: b.height || 600,
-        strokes: JSON.parse(JSON.stringify(engine.strokeManager.strokes)),
+        strokes: JSON.parse(JSON.stringify(engine.strokeManager.strokes)) as Stroke[],
         background: { color: 'transparent' },
         contentBounds: (b.width > 0 && b.height > 0) ? b : undefined,
       };
       // The store is the single writer: commit persists (debounced) and refreshes siblings.
       if (handle) handle.commit(fileToSave);
       else await repo.save(filePath, fileToSave);
-    } catch {}
+    } catch { /* ignore save failure */ }
   }
 
-  const surface = engineSurface(engine, () => { saveDrawing(); });
+  const surface = engineSurface(engine, () => { void saveDrawing(); });
   surfaceManager?.register(surface, drawingContainer);
   // Auto-show the shared toolbar when a page/node already contains a drawing, instead
   // of waiting for the first pointer interaction.
@@ -222,7 +219,7 @@ export async function mountBlackboardEmbed(repo: IDrawingRepository, embedEl: HT
     // Drop editor focus before anything else so Obsidian's mobile bottom toolbar (the
     // Scribble trigger) never raises for a drawing stroke.
     suppressEditorFocus();
-    drawingContainer.style.touchAction = 'none';
+    drawingContainer.setCssStyles({ touchAction: 'none' });
     strokeActive = true;
 
     surfaceManager?.setActive(surface);
@@ -257,7 +254,7 @@ export async function mountBlackboardEmbed(repo: IDrawingRepository, embedEl: HT
     surfaceManager?.notifyStrokeEnd();
     // Do not re-fit the view on stroke end: the view is fitted once on mount and only
     // re-fitted by the ResizeObserver above. Strokes beyond the node edge are clipped.
-    saveDrawing();
+    void saveDrawing();
   };
 
   document.addEventListener('pointerdown', onDocPointerDown, true);
@@ -275,7 +272,7 @@ export async function mountBlackboardEmbed(repo: IDrawingRepository, embedEl: HT
   // guard no-opped and Scribble won. Suppress every touch over the embed/drawing surface;
   // the note still scrolls from outside the embed (accepted tradeoff). Pen draws via pointer
   // events, which still fire.
-  embedEl.style.padding = '0';
+  embedEl.setCssStyles({ padding: '0' });
   const blockScribble = (e: TouchEvent) => { e.preventDefault(); };
   embedEl.addEventListener('touchstart', blockScribble, { passive: false });
   embedEl.addEventListener('touchmove', blockScribble, { passive: false });

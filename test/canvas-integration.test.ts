@@ -95,7 +95,7 @@ describe('insertDrawingAtCursor', () => {
     // Repro of the reported bug: invoking "insert new drawing" while a .blackboard
     // editor is the active view created a stray file and navigated away. The command
     // must fail gracefully (no-op) in that context.
-    app.workspace.activeLeaf = { view: { getViewType: () => 'blackboard-view' } } as any;
+    app.workspace.getActiveViewOfType.mockReturnValue({ getViewType: () => 'blackboard-view' } as any);
 
     await expect(
       insertDrawingAtCursor(app as any, settings, createDrawing as any, repo),
@@ -377,7 +377,7 @@ describe('BlackboardFileSuggestModal', () => {
     const openSpy = vi.spyOn(FuzzySuggestModal.prototype, 'open');
     const app = {
       vault: { getFiles: () => [] },
-      workspace: { activeLeaf: { view: { getViewType: () => 'blackboard-view' } } },
+      workspace: { getActiveViewOfType: () => ({ getViewType: () => 'blackboard-view' }) },
     };
 
     expect(() =>

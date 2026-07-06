@@ -9,6 +9,17 @@ export class BlackboardSettingTab extends PluginSettingTab {
     this.plugin = plugin;
   }
 
+  /**
+   * Declarative settings hook (Obsidian 1.13+). The imperative `display()` below remains the
+   * source of truth for rendering this tab's dynamic controls (the conditional SVG-path row and
+   * the eight generated palette pickers), which don't map cleanly onto static definitions. This
+   * method exists so the tab is recognised by the newer settings-search API without changing how
+   * the settings render on any currently supported app version.
+   */
+  getSettingDefinitions(): unknown[] {
+    return [];
+  }
+
   display(): void {
     const { containerEl } = this;
     containerEl.empty();
@@ -53,7 +64,7 @@ export class BlackboardSettingTab extends PluginSettingTab {
     if (this.plugin.settings.autoExportSvg) {
       new Setting(containerEl)
         .setName('SVG export path')
-        .setDesc('Folder for exported SVGs (empty = same folder as drawing)')
+        .setDesc('Folder for exported SVG files (empty = same folder as drawing)')
         .addText((text) =>
           text.setValue(this.plugin.settings.svgExportPath).onChange(async (value) => {
             this.plugin.settings.svgExportPath = value;

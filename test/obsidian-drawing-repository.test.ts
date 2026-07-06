@@ -14,6 +14,9 @@ function makeApp() {
       delete: vi.fn(),
       rename: vi.fn(),
     },
+    fileManager: {
+      trashFile: vi.fn(),
+    },
   };
 }
 
@@ -162,13 +165,13 @@ describe('ObsidianDrawingRepository', () => {
   });
 
   describe('delete', () => {
-    it('deletes existing file', async () => {
+    it('trashes existing file', async () => {
       const tfile = new TFile();
       app.vault.getAbstractFileByPath.mockReturnValue(tfile);
 
       await repo.delete('test.blackboard');
 
-      expect(app.vault.delete).toHaveBeenCalledWith(tfile);
+      expect(app.fileManager.trashFile).toHaveBeenCalledWith(tfile);
     });
 
     it('does nothing when file not found', async () => {
@@ -176,7 +179,7 @@ describe('ObsidianDrawingRepository', () => {
 
       await repo.delete('missing.blackboard');
 
-      expect(app.vault.delete).not.toHaveBeenCalled();
+      expect(app.fileManager.trashFile).not.toHaveBeenCalled();
     });
   });
 

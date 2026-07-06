@@ -1,6 +1,11 @@
 import { vi } from 'vitest';
 
 export class App {}
+export class View {
+  contentEl: HTMLElement = document.createElement('div');
+  getViewType(): string { return ''; }
+  constructor(_leaf?: any) {}
+}
 export class TFile {
   path = '';
   basename = '';

@@ -1,8 +1,8 @@
 {
 	"id": "blackboard",
 	"name": "Blackboard",
-	"version": "1.0.1",
-	"minAppVersion": "1.5.0",
+	"version": "1.0.2",
+	"minAppVersion": "1.6.6",
 	"description": "Draw with native stylus and Apple Pencil directly in Canvas nodes and Markdown embeds.",
 	"author": "James Wolensky",
 	"authorUrl": "https://github.com/jameswolensky",

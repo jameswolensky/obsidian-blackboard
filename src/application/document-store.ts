@@ -96,8 +96,8 @@ export class DocumentStore {
   private scheduleSave(path: string): void {
     const entry = this.entries.get(path);
     if (!entry) return;
-    if (entry.saveTimer !== null) clearTimeout(entry.saveTimer);
-    entry.saveTimer = setTimeout(() => {
+    if (entry.saveTimer !== null) window.clearTimeout(entry.saveTimer);
+    entry.saveTimer = window.setTimeout(() => {
       entry.saveTimer = null;
       void entry.repo.save(path, entry.file);
     }, this.saveDelayMs);
@@ -111,7 +111,7 @@ export class DocumentStore {
     if (entry.refCount <= 0) {
       // Flush any pending debounced write so the last edit is never lost on unmount.
       if (entry.saveTimer !== null) {
-        clearTimeout(entry.saveTimer);
+        window.clearTimeout(entry.saveTimer);
         entry.saveTimer = null;
         void entry.repo.save(path, entry.file);
       }

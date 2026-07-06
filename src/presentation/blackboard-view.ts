@@ -1,5 +1,5 @@
 import { TextFileView, WorkspaceLeaf } from 'obsidian';
-import type { BlackboardFile, PluginSettings } from '../domain/entities';
+import type { BlackboardFile, PluginSettings, Stroke } from '../domain/entities';
 import { FILE_EXTENSION } from '../domain/entities';
 import { serialize, deserialize } from '../application/file-format';
 import { DrawingEngine } from '../infrastructure/canvas-renderer';
@@ -29,7 +29,9 @@ export class BlackboardView extends TextFileView {
   private attaching: boolean = false;
   private surface: DrawingSurface | null = null;
   private isEmbedded: boolean = false;
-  private docListeners: Array<{ type: string; fn: (e: any) => void; capture: boolean }> = [];
+  // Method syntax (bivariant params) so specific DOM handlers like (e: PointerEvent) => void
+  // assign cleanly, while cleanup can still call fn (with a null placeholder for observers).
+  private docListeners: Array<{ type: string; fn(this: void, e: unknown): void; capture: boolean }> = [];
   private strokeActive: boolean = false;
   // Standalone view only: the surface fills the pane and is an infinite pan + zoom canvas
   // over the engine's view transform. On open (and on resize) the drawing is fitted into
@@ -137,14 +139,14 @@ export class BlackboardView extends TextFileView {
     // Parse file dimensions first
     let fileWidth = 800;
     let fileHeight = 600;
-    let fileStrokes: any[] = [];
+    let fileStrokes: Stroke[] = [];
     if (this.fileData) {
       try {
         const result = deserialize(this.fileData);
         fileWidth = result.file.width;
         fileHeight = result.file.height;
         fileStrokes = result.file.strokes;
-      } catch {}
+      } catch { /* ignore malformed data; start empty */ }
     }
 
     // Share the plugin's single ToolManager so tool/colour/size are global across every
@@ -220,7 +222,7 @@ export class BlackboardView extends TextFileView {
       version: 3,
       width: hasContent ? Math.round(cb.width) : 800,
       height: hasContent ? Math.round(cb.height) : 600,
-      strokes: JSON.parse(JSON.stringify(this.engine!.strokeManager.strokes)),
+      strokes: JSON.parse(JSON.stringify(this.engine!.strokeManager.strokes)) as Stroke[],
       background: { color: 'transparent' },
       contentBounds: hasContent ? cb : undefined,
     };
@@ -282,7 +284,7 @@ export class BlackboardView extends TextFileView {
         } else {
           this.layoutStandalone();
         }
-      } catch {}
+      } catch { /* ignore layout/deserialize failure */ }
       this.engine.staticDirty = true;
       this.engine.render();
     }
@@ -301,7 +303,7 @@ export class BlackboardView extends TextFileView {
     if (this.engine && this.file && !this.handle) {
       try {
         await this.app.vault.modify(this.file, this.getViewData());
-      } catch {}
+      } catch { /* ignore flush failure on close */ }
     }
     if (this.handle) {
       this.handle.release();
@@ -358,8 +360,8 @@ export class BlackboardView extends TextFileView {
     if (!canvasNode) return;
 
     const hideBlocker = () => {
-      const blocker = canvasNode!.querySelector('.canvas-node-content-blocker') as HTMLElement | null;
-      if (blocker) blocker.style.display = 'none';
+      const blocker = canvasNode.querySelector('.canvas-node-content-blocker');
+      if (blocker) (blocker as HTMLElement).setCssStyles({ display: 'none' });
     };
     hideBlocker();
 

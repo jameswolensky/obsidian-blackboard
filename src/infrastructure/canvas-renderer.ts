@@ -44,10 +44,10 @@ export class DrawingEngine {
     this.drawingHeight = height ?? (container.clientHeight || 600);
 
     // Layout (absolute, full-bleed) lives in styles.css under .blackboard-static/.blackboard-active.
-    this.staticCanvas = document.createElement('canvas');
+    this.staticCanvas = createEl('canvas');
     this.staticCanvas.className = 'blackboard-static';
 
-    this.activeCanvas = document.createElement('canvas');
+    this.activeCanvas = createEl('canvas');
     this.activeCanvas.className = 'blackboard-active';
 
     container.appendChild(this.staticCanvas);
@@ -63,7 +63,7 @@ export class DrawingEngine {
   loadStrokes(strokes: Stroke[]): void {
     this.strokeManager.reset();
     for (const stroke of strokes) {
-      this.strokeManager.strokes.push(JSON.parse(JSON.stringify(stroke)));
+      this.strokeManager.strokes.push(JSON.parse(JSON.stringify(stroke)) as Stroke);
     }
     this.staticDirty = true;
   }
@@ -124,7 +124,7 @@ export class DrawingEngine {
 
   requestRender(): void {
     if (this.rafId !== 0) return;
-    this.rafId = requestAnimationFrame(() => this.render());
+    this.rafId = window.requestAnimationFrame(() => this.render());
   }
 
   exportThumbnail(): Promise<Blob | null> {
@@ -135,7 +135,7 @@ export class DrawingEngine {
         return;
       }
 
-      const thumbCanvas = document.createElement('canvas');
+      const thumbCanvas = createEl('canvas');
       const maxSize = 256;
       const scale = Math.min(maxSize / bounds.width, maxSize / bounds.height);
       thumbCanvas.width = Math.ceil(bounds.width * scale);
