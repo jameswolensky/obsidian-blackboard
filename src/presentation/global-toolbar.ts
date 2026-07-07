@@ -219,6 +219,9 @@ export class GlobalToolbar {
       this.picker.on('color:change', (c: { hexString: string }) => {
         // Arbitrary wheel colors set the active tool color but never rewrite paletteColors.
         this.surface?.setColor(c.hexString);
+        // Repaint the pen/highlighter glyph now — a colour change doesn't trigger sync(),
+        // so without this the icon keeps its old tint until an unrelated event fires.
+        this.updateToolTints();
       });
     } catch {
       this.picker = null;
@@ -423,6 +426,9 @@ export class GlobalToolbar {
 
   private pickColor(color: string): void {
     this.surface?.setColor(color);
+    // Repaint the active tool's glyph immediately (see color:change note) — picking a
+    // swatch changes the colour but doesn't run sync(), so the tint would otherwise lag.
+    this.updateToolTints();
     if (this.picker) { try { this.picker.color.hexString = color; } catch { /* ignore */ } }
     // Selecting a preset swatch is a committed choice — close the popover.
     this.closePopovers();
