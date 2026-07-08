@@ -63,6 +63,8 @@ export class GlobalToolbar {
   private onResize: () => void;
   // iPad home-indicator inset; the toolbar is kept above this to avoid clipping.
   private safeBottom = 0;
+  // Frame-retry counter for cold-start repositioning (see notLaidOut()).
+  private layoutTries = 0;
 
   // The eight color-popover shortcuts in display order, sourced from plugin settings.
   private readonly paletteColors: string[];
@@ -140,7 +142,10 @@ export class GlobalToolbar {
 
     this.colorWell = createEl('button');
     // Spectrum-only: the conic rainbow fills the whole well, with no center-color dot.
-    this.colorWell.className = 'blackboard-gt-swatch blackboard-gt-colorwell';
+    // `clickable-icon` opts our controls OUT of Obsidian's `button:not(.clickable-icon)`
+    // styling (grey fill, padding, native control) — the review-compliant way to keep our
+    // own look without !important.
+    this.colorWell.className = 'blackboard-gt-swatch blackboard-gt-colorwell clickable-icon';
     this.colorWell.setAttribute('aria-label', 'Color');
     this.colorWell.addEventListener('pointerup', (e) => {
       e.stopPropagation();
@@ -199,7 +204,7 @@ export class GlobalToolbar {
     // The eight swatches are pure shortcuts sourced from settings.paletteColors, in order.
     for (const color of this.paletteColors) {
       const sw = createEl('button');
-      sw.className = 'blackboard-gt-swatch';
+      sw.className = 'blackboard-gt-swatch clickable-icon';
       sw.style.backgroundColor = color;
       sw.addEventListener('pointerup', (e) => { e.stopPropagation(); this.pickColor(color); });
       swatches.appendChild(sw);
@@ -254,7 +259,7 @@ export class GlobalToolbar {
     const max = sizes[sizes.length - 1];
     for (const size of sizes) {
       const dot = createEl('button');
-      dot.className = 'blackboard-gt-size-dot';
+      dot.className = 'blackboard-gt-size-dot clickable-icon';
       dot.dataset.size = String(size);
       const inner = dot.createDiv({ cls: 'blackboard-gt-size-dot-inner' });
       // Grade the dot diameter WITHIN the active scale (6px smallest → 22px largest) so every
@@ -368,8 +373,20 @@ export class GlobalToolbar {
     else this.placeToolbar();
   }
 
+  /** On a cold start (app reopen) the anchor view isn't laid out yet, so its rect is
+   * empty — positioning off that would pin the toolbar to the top-left corner. Skip and
+   * retry on the next frame until the view has real geometry. Bounded so a genuinely
+   * zero-size host can't loop forever; the resize/layout-change handlers catch it after. */
+  private notLaidOut(): boolean {
+    const r = this.anchorRect();
+    if (r.width > 1 && r.height > 1) { this.layoutTries = 0; return false; }
+    if (this.layoutTries++ < 60) requestAnimationFrame(() => this.reposition());
+    return true;
+  }
+
   /** Toolbar: always bottom-centre of the active view. */
   private placeToolbar(): void {
+    if (this.notLaidOut()) return;
     const b = this.bounds();
     this.root.style.maxWidth = `${Math.max(120, b.right - b.left)}px`;
     const w = this.root.offsetWidth || 220;
@@ -380,6 +397,7 @@ export class GlobalToolbar {
 
   /** Pill: always pinned to the right edge, vertically centred. */
   private placePill(): void {
+    if (this.notLaidOut()) return;
     const b = this.bounds();
     const s = this.pill.offsetWidth || 56;
     this.pill.style.left = `${Math.max(b.left, b.right - s)}px`;
@@ -501,7 +519,7 @@ export class GlobalToolbar {
 
   private iconButton(icon: IconName, label: string): HTMLButtonElement {
     const btn = createEl('button');
-    btn.className = 'blackboard-gt-btn';
+    btn.className = 'blackboard-gt-btn clickable-icon';
     btn.setAttribute('aria-label', label);
     setToolbarIcon(btn, icon);
     return btn;

@@ -300,13 +300,12 @@
 }
 
 .blackboard-global-toolbar .blackboard-gt-btn {
-  /* iOS/WKWebView renders the NATIVE button control (grey fill, system shape) unless
-     appearance is forced off. Obsidian's own button rules can win the cascade on-device,
-     re-enabling it — which showed up as a grey, boxy "selected" tool with no accent.
-     Force it off with !important so our styling always applies (matches the beta that
-     rendered correctly on real iPad). */
-  -webkit-appearance: none !important;
-  appearance: none !important;
+  /* The `clickable-icon` class (set in JS) exempts these buttons from Obsidian's
+     `button:not(.clickable-icon)` rules — the grey fill, padding, and native control that
+     otherwise show through on iOS/WKWebView as a grey, boxy tool. `appearance: none` also
+     keeps WKWebView from drawing the native button chrome. No !important needed. */
+  -webkit-appearance: none;
+  appearance: none;
   box-sizing: border-box;
   display: flex;
   align-items: center;
@@ -318,9 +317,8 @@
   border: none;
   background: transparent;
   /* Flat tool buttons (pen/highlighter/eraser/undo/redo/insert/collapse): a small
-     radius. !important so WKWebView's native control can't square it. Only the color
-     swatches and the rainbow color well (.blackboard-gt-swatch) stay circular. */
-  border-radius: var(--radius-s) !important;
+     radius. Only the color swatches and the rainbow color well stay circular. */
+  border-radius: var(--radius-s);
   color: var(--text-normal);
   cursor: pointer;
   touch-action: manipulation;
@@ -332,13 +330,13 @@
   height: clamp(20px, 4.6vw, 24px);
 }
 .blackboard-global-toolbar .blackboard-gt-btn:hover { background: var(--background-modifier-hover); }
-/* The selected tool's accent fill must win over hover, Obsidian's `button` rules, and the
-   native control — force it. Keep it accent-colored even while hovered. */
+/* Selected tool gets the accent fill; kept accent-colored even while hovered (the .active
+   rule follows :hover in source order, so it wins at equal specificity). */
 .blackboard-global-toolbar .blackboard-gt-btn.active,
 .blackboard-global-toolbar .blackboard-gt-btn.active:hover {
-  color: var(--text-on-accent) !important;
-  background: var(--interactive-accent) !important;
-  border-radius: var(--radius-s) !important;
+  color: var(--text-on-accent);
+  background: var(--interactive-accent);
+  border-radius: var(--radius-s);
 }
 .blackboard-global-toolbar .blackboard-gt-btn:disabled { opacity: 0.4; cursor: default; }
 
@@ -351,15 +349,15 @@
 }
 
 .blackboard-gt-swatch {
-  /* See .blackboard-gt-btn: force the native iOS button control OFF (!important) or
-     WKWebView renders a grey system control instead of our circular swatch. */
-  -webkit-appearance: none !important;
-  appearance: none !important;
+  /* See .blackboard-gt-btn: clickable-icon + appearance:none keep WKWebView from drawing
+     a native control over our circular swatch. */
+  -webkit-appearance: none;
+  appearance: none;
   box-sizing: border-box;
   width: 28px;
   height: 28px;
   min-width: 28px;
-  border-radius: 50% !important;
+  border-radius: 50%;
   border: 2px solid var(--background-modifier-border);
   padding: 0;
   cursor: pointer;
@@ -406,8 +404,8 @@
   gap: 10px;
 }
 .blackboard-gt-size-dot {
-  -webkit-appearance: none !important;
-  appearance: none !important;
+  -webkit-appearance: none;
+  appearance: none;
   box-sizing: border-box;
   display: flex;
   align-items: center;
@@ -428,47 +426,6 @@
 .blackboard-gt-size-dot-inner { background: var(--text-normal); border-radius: 50%; }
 /* On the accent fill, the inner dot switches to the on-accent colour to stay visible. */
 .blackboard-gt-size-dot.active .blackboard-gt-size-dot-inner { background: var(--text-on-accent); }
-
-/* iPad: Obsidian's mobile stylesheet styles every `<button>` (padding + its own
-   border-radius) using `!important`, which NO selector specificity can outrank — only
-   our own `!important` can. A prior refactor traded these `!important` overrides for a
-   specificity-only (.is-tablet) approach; on iPad that quietly LOST to Obsidian's
-   `!important`, squaring the round controls (the selected tool's accent lost its radius)
-   and clipping icons. Re-assert geometry AND the shape with `!important`. Desktop has no
-   such injection, so this simply restates the intended values there — no visual change. */
-.blackboard-global-toolbar .blackboard-gt-btn,
-.blackboard-gt-swatch,
-.blackboard-gt-colorwell,
-.blackboard-gt-size-dot {
-  padding: 0 !important;
-  box-sizing: border-box !important;
-}
-.blackboard-global-toolbar .blackboard-gt-btn {
-  width: clamp(34px, 7vw, 42px) !important;
-  height: clamp(34px, 7vw, 42px) !important;
-  min-width: clamp(34px, 7vw, 42px) !important;
-  /* The selected-tool accent must keep its rounded corners on iPad. */
-  border-radius: var(--radius-s) !important;
-}
-.blackboard-gt-swatch,
-.blackboard-gt-colorwell {
-  border-radius: 50% !important; /* colour swatches + rainbow well stay perfectly circular */
-}
-.blackboard-gt-swatch {
-  width: 28px !important;
-  height: 28px !important;
-  min-width: 28px !important;
-}
-.blackboard-gt-colorwell {
-  width: clamp(30px, 6.5vw, 36px) !important;
-  height: clamp(30px, 6.5vw, 36px) !important;
-  min-width: clamp(30px, 6.5vw, 36px) !important;
-}
-.blackboard-gt-size-dot {
-  width: 32px !important;
-  height: 32px !important;
-  min-width: 32px !important;
-}
 
 .blackboard-global-toolbar-pill {
   position: fixed;
