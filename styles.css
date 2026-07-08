@@ -318,9 +318,9 @@
   border: none;
   background: transparent;
   /* Flat tool buttons (pen/highlighter/eraser/undo/redo/insert/collapse): a small
-     radius, matching Obsidian's native controls. Only the color swatches and the
-     rainbow color well (.blackboard-gt-swatch) stay circular. */
-  border-radius: var(--radius-s);
+     radius. !important so WKWebView's native control can't square it. Only the color
+     swatches and the rainbow color well (.blackboard-gt-swatch) stay circular. */
+  border-radius: var(--radius-s) !important;
   color: var(--text-normal);
   cursor: pointer;
   touch-action: manipulation;
@@ -351,15 +351,15 @@
 }
 
 .blackboard-gt-swatch {
-  /* See .blackboard-gt-btn: reset native iOS button styling so swatches stay
-     perfectly circular on WKWebView. */
-  -webkit-appearance: none;
-  appearance: none;
+  /* See .blackboard-gt-btn: force the native iOS button control OFF (!important) or
+     WKWebView renders a grey system control instead of our circular swatch. */
+  -webkit-appearance: none !important;
+  appearance: none !important;
   box-sizing: border-box;
   width: 28px;
   height: 28px;
   min-width: 28px;
-  border-radius: 50%;
+  border-radius: 50% !important;
   border: 2px solid var(--background-modifier-border);
   padding: 0;
   cursor: pointer;
@@ -406,8 +406,8 @@
   gap: 10px;
 }
 .blackboard-gt-size-dot {
-  -webkit-appearance: none;
-  appearance: none;
+  -webkit-appearance: none !important;
+  appearance: none !important;
   box-sizing: border-box;
   display: flex;
   align-items: center;
