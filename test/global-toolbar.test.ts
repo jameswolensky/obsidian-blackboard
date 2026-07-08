@@ -730,33 +730,6 @@ describe('GlobalToolbar — stays clear of the native Canvas card menu', () => {
     // The toolbar's bottom edge must sit at or above the card menu's top (500).
     expect(top + height).toBeLessThanOrEqual(500);
   });
-
-  it('sits above the card menu even before the view lays out (cold-start viewport fallback)', () => {
-    // View rect is left un-stubbed (zero) so the toolbar uses the cold-start viewport
-    // fallback — which must STILL clamp above the native canvas card menu, not overlap it.
-    const view = document.createElement('div');
-    view.className = 'view-content';
-    const cardMenu = document.createElement('div');
-    cardMenu.className = 'canvas-card-menu';
-    stubRect(cardMenu, { top: 500, bottom: 544, left: 100, right: 300 });
-    view.appendChild(cardMenu);
-    const surfaceEl = document.createElement('div');
-    view.appendChild(surfaceEl);
-    document.body.appendChild(view);
-
-    const host = document.createElement('div');
-    document.body.appendChild(host);
-    const mgr = new SurfaceManager();
-    tb = new GlobalToolbar(host, mgr);
-    const surface = mockSurface();
-    mgr.register(surface, surfaceEl);
-    mgr.setActive(surface);
-
-    const root = host.querySelector('.blackboard-global-toolbar') as HTMLElement;
-    const top = parseFloat(root.style.top);
-    const height = root.offsetHeight || 48;
-    expect(top + height).toBeLessThanOrEqual(500);
-  });
 });
 
 describe('GlobalToolbar — visual feedback', () => {
@@ -859,76 +832,6 @@ describe('GlobalToolbar — visual feedback', () => {
     expect(pen.style.color).toBe(penBefore);
     expect(hl.style.color).toBe(hlBefore);
     expect((host.querySelector('[data-tool="eraser"]') as HTMLElement).style.color).toBe('');
-  });
-});
-
-describe('GlobalToolbar — pen glyph repaints immediately on colour change (icon stayed white until next event)', () => {
-  let tb: GlobalToolbar | undefined;
-  afterEach(() => { tb?.destroy(); tb = undefined; });
-
-  function setup(palette: string[]) {
-    const host = document.createElement('div');
-    document.body.appendChild(host);
-    const mgr = new SurfaceManager();
-    const settings: PluginSettings = { ...DEFAULT_PLUGIN_SETTINGS, paletteColors: palette };
-    tb = new GlobalToolbar(host, mgr, undefined, undefined, settings);
-    // sharedSurface so setColor actually mutates penColor (like the real engine surface).
-    const surface = sharedSurface(new ToolManager({ ...DEFAULT_TOOL_STATE })); // pen #ffffff
-    mgr.register(surface, document.createElement('div'));
-    mgr.setActive(surface);
-    return { host, surface };
-  }
-
-  const colorStr = (c: string) => { const p = document.createElement('div'); p.style.color = c; return p.style.color; };
-
-  it('repaints the pen glyph the instant a palette swatch is picked — no other event needed', () => {
-    // Repro: picking a colour set surface.penColor but never re-tinted the pen button, so
-    // the glyph stayed white (its initial tint) until an unrelated sync() (draw/tool switch).
-    const palette = ['#ff0000', '#00ff00', '#0000ff', '#111111', '#222222', '#333333', '#444444', '#555555'];
-    const { host } = setup(palette);
-    const pen = host.querySelector('[data-tool="pen"]') as HTMLElement;
-    expect(pen.style.color).toBe(colorStr('#ffffff')); // starts white
-
-    // Open the colour well and pick the first swatch (red). Do NOTHING else afterward.
-    pointerup(host.querySelector('.blackboard-gt-colorwell'));
-    pointerup(host.querySelector('.blackboard-gt-color-popover .blackboard-gt-swatch'));
-
-    expect(pen.style.color).toBe(colorStr('#ff0000'));
-  });
-
-  it('repaints the pen glyph the instant an arbitrary wheel colour is chosen', () => {
-    const palette = ['#ff0000', '#00ff00', '#0000ff', '#111111', '#222222', '#333333', '#444444', '#555555'];
-    const { host } = setup(palette);
-    const pen = host.querySelector('[data-tool="pen"]') as HTMLElement;
-
-    const picker = (tb as any).picker;
-    if (picker) {
-      // Drive the iro picker as the user dragging the wheel.
-      picker.color.hexString = '#abcdef';
-    } else {
-      // Fallback when iro can't init in jsdom: exercise the same code path directly.
-      (tb as any).pickColor('#abcdef');
-    }
-
-    expect(pen.style.color).toBe(colorStr('#abcdef'));
-  });
-
-  it('repaints the highlighter glyph the instant its colour is changed (same bug, highlighter tool)', () => {
-    // The user flagged the highlighter was never directly tested. Same missing-refresh path:
-    // with the highlighter active, picking a colour must re-tint the highlighter glyph now.
-    const palette = ['#00ffcc', '#00ff00', '#0000ff', '#111111', '#222222', '#333333', '#444444', '#555555'];
-    const { host } = setup(palette);
-    const hl = host.querySelector('[data-tool="highlighter"]') as HTMLElement;
-    // Make the highlighter the active tool, then read its starting tint.
-    pointerup(host.querySelector('[data-tool="highlighter"]'));
-    const before = hl.style.color;
-
-    // Pick the first swatch while the highlighter is active. Nothing else afterward.
-    pointerup(host.querySelector('.blackboard-gt-colorwell'));
-    pointerup(host.querySelector('.blackboard-gt-color-popover .blackboard-gt-swatch'));
-
-    expect(hl.style.color).toBe(colorStr('#00ffcc'));
-    expect(hl.style.color).not.toBe(before);
   });
 });
 

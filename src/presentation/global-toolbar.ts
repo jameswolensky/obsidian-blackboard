@@ -63,8 +63,6 @@ export class GlobalToolbar {
   private onResize: () => void;
   // iPad home-indicator inset; the toolbar is kept above this to avoid clipping.
   private safeBottom = 0;
-  // Frame-retry counter for cold-start repositioning (see notLaidOut()).
-  private layoutTries = 0;
 
   // The eight color-popover shortcuts in display order, sourced from plugin settings.
   private readonly paletteColors: string[];
@@ -221,9 +219,6 @@ export class GlobalToolbar {
       this.picker.on('color:change', (c: { hexString: string }) => {
         // Arbitrary wheel colors set the active tool color but never rewrite paletteColors.
         this.surface?.setColor(c.hexString);
-        // Repaint the pen/highlighter glyph now — a colour change doesn't trigger sync(),
-        // so without this the icon keeps its old tint until an unrelated event fires.
-        this.updateToolTints();
       });
     } catch {
       this.picker = null;
@@ -337,18 +332,6 @@ export class GlobalToolbar {
     return (this.anchorEl ?? this.host).getBoundingClientRect();
   }
 
-  /** Sit above Obsidian's native Canvas card menu (bottom-centred, visible on `.is-tablet`)
-   * so our toolbar never covers it — the agreed iPad behaviour. Applied to BOTH the view
-   * bounds and the cold-start viewport fallback so it holds in every state. */
-  private clampAboveCardMenu(bottom: number): number {
-    const cardMenu = this.anchorEl?.querySelector('.canvas-card-menu') as HTMLElement | null;
-    if (cardMenu) {
-      const cm = cardMenu.getBoundingClientRect();
-      if (cm.height > 0 && cm.top < bottom) return cm.top - 8;
-    }
-    return bottom;
-  }
-
   /** Usable region: the active view's rect, intersected with the visible viewport
    * (minus the bottom safe-area inset) and inset by a 12px margin. */
   private bounds(): { left: number; right: number; top: number; bottom: number } {
@@ -358,12 +341,19 @@ export class GlobalToolbar {
     // fall back to the layout viewport when visualViewport is unavailable.
     const vv = window.visualViewport;
     const visibleBottom = vv ? vv.offsetTop + vv.height : window.innerHeight;
-    const bottom = Math.min(r.bottom, visibleBottom - this.safeBottom) - 12;
+    let bottom = Math.min(r.bottom, visibleBottom - this.safeBottom) - 12;
+    // Keep clear of Obsidian's native Canvas card menu (also bottom-centred), on any
+    // device/size, by sitting above it whenever it is present and visible.
+    const cardMenu = this.anchorEl?.querySelector('.canvas-card-menu') as HTMLElement | null;
+    if (cardMenu) {
+      const cm = cardMenu.getBoundingClientRect();
+      if (cm.height > 0 && cm.top < bottom) bottom = cm.top - 8;
+    }
     return {
       left: r.left + 12,
       right: r.right - 12,
       top: Math.max(r.top, 0) + 12,
-      bottom: this.clampAboveCardMenu(bottom),
+      bottom,
     };
   }
 
@@ -375,32 +365,9 @@ export class GlobalToolbar {
     else this.placeToolbar();
   }
 
-  /** True when the anchor view has no real layout rect yet (cold start / app reopen).
-   * We still position (see placeToolbar) so the toolbar is never invisible; we just also
-   * schedule a retry so it snaps from the viewport fallback to the view once it lays out. */
-  private notLaidOut(): boolean {
-    const r = this.anchorRect();
-    if (r.width > 1 && r.height > 1) { this.layoutTries = 0; return false; }
-    if (this.layoutTries++ < 60) requestAnimationFrame(() => this.reposition());
-    return true;
-  }
-
-  /** Region to position against: the active view's usable bounds, or — before the view
-   * has laid out (cold start) — the visible viewport, so the toolbar is ALWAYS visible at
-   * bottom-centre instead of vanishing or jumping to the top-left corner. */
-  private placementBounds(): { left: number; right: number; top: number; bottom: number } {
-    if (!this.notLaidOut()) return this.bounds();
-    const vv = window.visualViewport;
-    const vw = vv ? vv.width : window.innerWidth;
-    const vh = vv ? vv.offsetTop + vv.height : window.innerHeight;
-    const vl = vv ? vv.offsetLeft : 0;
-    // Still sit above Obsidian's canvas card menu during cold start, not just once laid out.
-    return { left: vl + 12, right: vl + vw - 12, top: 12, bottom: this.clampAboveCardMenu(vh - this.safeBottom - 12) };
-  }
-
-  /** Toolbar: always bottom-centre of the active view (viewport fallback on cold start). */
+  /** Toolbar: always bottom-centre of the active view. */
   private placeToolbar(): void {
-    const b = this.placementBounds();
+    const b = this.bounds();
     this.root.style.maxWidth = `${Math.max(120, b.right - b.left)}px`;
     const w = this.root.offsetWidth || 220;
     const h = this.root.offsetHeight || 48;
@@ -408,9 +375,9 @@ export class GlobalToolbar {
     this.root.style.top = `${Math.max(b.top, b.bottom - h)}px`;
   }
 
-  /** Pill: always pinned to the right edge, vertically centred (viewport fallback). */
+  /** Pill: always pinned to the right edge, vertically centred. */
   private placePill(): void {
-    const b = this.placementBounds();
+    const b = this.bounds();
     const s = this.pill.offsetWidth || 56;
     this.pill.style.left = `${Math.max(b.left, b.right - s)}px`;
     this.pill.style.top = `${Math.max(b.top, Math.round((b.top + b.bottom) / 2 - s / 2))}px`;
@@ -456,9 +423,6 @@ export class GlobalToolbar {
 
   private pickColor(color: string): void {
     this.surface?.setColor(color);
-    // Repaint the active tool's glyph immediately (see color:change note) — picking a
-    // swatch changes the colour but doesn't run sync(), so the tint would otherwise lag.
-    this.updateToolTints();
     if (this.picker) { try { this.picker.color.hexString = color; } catch { /* ignore */ } }
     // Selecting a preset swatch is a committed choice — close the popover.
     this.closePopovers();
@@ -479,7 +443,7 @@ export class GlobalToolbar {
       // highlighter) and highlight the dot matching the active size — sync() only runs on
       // selection otherwise.
       if (which === 'size') this.rebuildSizeDots();
-      this.positionPopover(target, which === 'color' ? this.colorWell : this.sizeBtn);
+      this.positionPopover(target);
     }
   }
 
@@ -488,23 +452,14 @@ export class GlobalToolbar {
     this.sizePopover.setCssStyles({ display: 'none' });
   }
 
-  /** position:fixed in viewport coords; centred over the button that opened it and sitting
-   * just above the toolbar. Clamped within the active view when it's laid out, else the
-   * visible viewport — so a not-yet-laid-out (cold-start) anchor can't slam it to the left
-   * edge. */
-  private positionPopover(p: HTMLElement, anchor: HTMLElement): void {
-    const tr = this.root.getBoundingClientRect();
-    const ar = anchor.getBoundingClientRect();
+  private positionPopover(p: HTMLElement): void {
+    // position:fixed in viewport coords; anchored above the toolbar and clamped
+    // horizontally within the active view so it doesn't overflow sidebars.
+    const r = this.root.getBoundingClientRect();
     const a = this.anchorRect();
-    const vv = window.visualViewport;
-    const laidOut = a.width > 1 && a.height > 1;
-    const minLeft = (laidOut ? a.left : (vv ? vv.offsetLeft : 0)) + 8;
-    const maxRight = (laidOut ? a.right : (vv ? vv.offsetLeft + vv.width : window.innerWidth)) - 8;
-    // Centre over the button, then clamp so the popover stays fully on-screen.
-    let left = ar.left + ar.width / 2 - p.offsetWidth / 2;
-    left = Math.min(Math.max(minLeft, left), Math.max(minLeft, maxRight - p.offsetWidth));
-    p.style.left = `${left}px`;
-    p.style.top = `${Math.max(8, tr.top - p.offsetHeight - 8)}px`;
+    const left = Math.min(Math.max(a.left + 8, r.left), a.right - p.offsetWidth - 8);
+    p.style.left = `${Math.max(8, left)}px`;
+    p.style.top = `${Math.max(8, r.top - p.offsetHeight - 8)}px`;
   }
 
   private setCollapsed(c: boolean): void {

@@ -51,11 +51,6 @@ export default class BlackboardPlugin extends Plugin {
       }, this.settings);
       this.register(() => this.globalToolbar?.destroy());
       this.routeToolbar();
-      // On app start/reload the restored drawing view may have already called setActive()
-      // BEFORE this toolbar existed (so it missed the notification), and routeToolbar's
-      // activateForView early-returns when that surface is still active. Re-fire the current
-      // active surface so the just-created toolbar shows/positions for it (not left hidden).
-      this.surfaceManager.refresh();
     });
     this.registerEvent(this.app.workspace.on('active-leaf-change', () => this.routeToolbar()));
     // Keep the toolbar clamped inside the active view when the layout changes
