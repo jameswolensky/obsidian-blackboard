@@ -142,10 +142,7 @@ export class GlobalToolbar {
 
     this.colorWell = createEl('button');
     // Spectrum-only: the conic rainbow fills the whole well, with no center-color dot.
-    // `clickable-icon` opts our controls OUT of Obsidian's `button:not(.clickable-icon)`
-    // styling (grey fill, padding, native control) — the review-compliant way to keep our
-    // own look without !important.
-    this.colorWell.className = 'blackboard-gt-swatch blackboard-gt-colorwell clickable-icon';
+    this.colorWell.className = 'blackboard-gt-swatch blackboard-gt-colorwell';
     this.colorWell.setAttribute('aria-label', 'Color');
     this.colorWell.addEventListener('pointerup', (e) => {
       e.stopPropagation();
@@ -204,7 +201,7 @@ export class GlobalToolbar {
     // The eight swatches are pure shortcuts sourced from settings.paletteColors, in order.
     for (const color of this.paletteColors) {
       const sw = createEl('button');
-      sw.className = 'blackboard-gt-swatch clickable-icon';
+      sw.className = 'blackboard-gt-swatch';
       sw.style.backgroundColor = color;
       sw.addEventListener('pointerup', (e) => { e.stopPropagation(); this.pickColor(color); });
       swatches.appendChild(sw);
@@ -259,7 +256,7 @@ export class GlobalToolbar {
     const max = sizes[sizes.length - 1];
     for (const size of sizes) {
       const dot = createEl('button');
-      dot.className = 'blackboard-gt-size-dot clickable-icon';
+      dot.className = 'blackboard-gt-size-dot';
       dot.dataset.size = String(size);
       const inner = dot.createDiv({ cls: 'blackboard-gt-size-dot-inner' });
       // Grade the dot diameter WITHIN the active scale (6px smallest → 22px largest) so every
@@ -528,7 +525,7 @@ export class GlobalToolbar {
 
   private iconButton(icon: IconName, label: string): HTMLButtonElement {
     const btn = createEl('button');
-    btn.className = 'blackboard-gt-btn clickable-icon';
+    btn.className = 'blackboard-gt-btn';
     btn.setAttribute('aria-label', label);
     setToolbarIcon(btn, icon);
     return btn;
