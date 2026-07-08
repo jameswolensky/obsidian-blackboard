@@ -1,11 +1,19 @@
 import type { IDrawingRepository } from '../domain/ports';
-import type { BlackboardFile, PluginSettings, Stroke } from '../domain/entities';
+import type { BlackboardFile, PluginSettings } from '../domain/entities';
 import { DrawingEngine } from '../infrastructure/canvas-renderer';
 import type { ToolManager } from '../domain/tool-manager';
 import { eraseAtPoint } from '../application/eraser-service';
+import { inputDebugEnabled, inputDebugLog } from './input-debug';
 import type { SurfaceManager } from './surface-manager';
 import type { DocumentStore, SharedDocumentHandle } from '../application/document-store';
 import { engineSurface } from './drawing-surface';
+
+function dbgTarget(t: EventTarget | null): string {
+  const el = t as HTMLElement | null;
+  if (!el || !el.tagName) return '?';
+  const cls = typeof el.className === 'string' && el.className.trim() ? '.' + el.className.trim().split(/\s+/)[0] : '';
+  return el.tagName.toLowerCase() + cls;
+}
 
 function isDrawingInput(e: PointerEvent): boolean {
   return e.pointerType === 'pen' || e.pointerType === 'mouse';
@@ -20,7 +28,7 @@ function isDrawingInput(e: PointerEvent): boolean {
  * editable/CodeMirror element; never steal focus from anything else.
  */
 function suppressEditorFocus(): void {
-  const active = activeDocument.activeElement as HTMLElement | null;
+  const active = document.activeElement as HTMLElement | null;
   if (!active || typeof active.blur !== 'function') return;
   const isEditor = active.isContentEditable || active.closest('.cm-editor') !== null;
   if (isEditor) active.blur();
@@ -31,7 +39,9 @@ export async function mountBlackboardEmbed(repo: IDrawingRepository, embedEl: HT
   embedEl.dataset.bbMounted = 'true';
   embedEl.empty();
   embedEl.addClass('blackboard-embed');
-  embedEl.setCssStyles({ position: 'relative', display: 'flex', flexDirection: 'column' });
+  embedEl.style.position = 'relative';
+  embedEl.style.display = 'flex';
+  embedEl.style.flexDirection = 'column';
 
   // The shared document is the single source of truth for this path: the engine renders
   // from its canonical strokes and writes through it, so sibling surfaces stay in sync
@@ -43,9 +53,12 @@ export async function mountBlackboardEmbed(repo: IDrawingRepository, embedEl: HT
   // scale-stable (B3).
   const refFile = () => (handle ? handle.getFile() : file);
 
-  const drawingContainer = createDiv();
+  const drawingContainer = document.createElement('div');
   drawingContainer.className = 'blackboard-drawing-container blackboard-embedded-drawing';
-  drawingContainer.setCssStyles({ position: 'relative', width: '100%', flex: '1', minHeight: '150px' });
+  drawingContainer.style.position = 'relative';
+  drawingContainer.style.width = '100%';
+  drawingContainer.style.flex = '1';
+  drawingContainer.style.minHeight = '150px';
   embedEl.appendChild(drawingContainer);
 
   // Display size is measured from the drawing surface element (the same one the pointer
@@ -60,9 +73,7 @@ export async function mountBlackboardEmbed(repo: IDrawingRepository, embedEl: HT
   embedEl.addEventListener('click', (e) => { e.stopPropagation(); e.stopImmediatePropagation(); }, true);
   embedEl.addEventListener('dblclick', (e) => { e.stopPropagation(); e.stopImmediatePropagation(); }, true);
 
-  // Method syntax (bivariant params) so specific DOM handlers like (e: PointerEvent) => void
-  // assign cleanly, while cleanup can still call fn (with a null placeholder for observers).
-  const docListeners: Array<{ type: string; fn(this: void, e: unknown): void; capture: boolean }> = [];
+  const docListeners: Array<{ type: string; fn: (e: any) => void; capture: boolean }> = [];
 
   let canvasNode: HTMLElement | null = null;
   let el: HTMLElement | null = embedEl;
@@ -72,8 +83,8 @@ export async function mountBlackboardEmbed(repo: IDrawingRepository, embedEl: HT
   }
   if (canvasNode) {
     const hideBlocker = () => {
-      const blocker = canvasNode.querySelector('.canvas-node-content-blocker');
-      if (blocker) (blocker as HTMLElement).setCssStyles({ display: 'none' });
+      const blocker = canvasNode!.querySelector('.canvas-node-content-blocker') as HTMLElement | null;
+      if (blocker) blocker.style.display = 'none';
     };
     hideBlocker();
     const observer = new MutationObserver(hideBlocker);
@@ -159,17 +170,17 @@ export async function mountBlackboardEmbed(repo: IDrawingRepository, embedEl: HT
         version: 3,
         width: b.width || 800,
         height: b.height || 600,
-        strokes: JSON.parse(JSON.stringify(engine.strokeManager.strokes)) as Stroke[],
+        strokes: JSON.parse(JSON.stringify(engine.strokeManager.strokes)),
         background: { color: 'transparent' },
         contentBounds: (b.width > 0 && b.height > 0) ? b : undefined,
       };
       // The store is the single writer: commit persists (debounced) and refreshes siblings.
       if (handle) handle.commit(fileToSave);
       else await repo.save(filePath, fileToSave);
-    } catch { /* ignore save failure */ }
+    } catch {}
   }
 
-  const surface = engineSurface(engine, () => { void saveDrawing(); });
+  const surface = engineSurface(engine, () => { saveDrawing(); });
   surfaceManager?.register(surface, drawingContainer);
   // Auto-show the shared toolbar when a page/node already contains a drawing, instead
   // of waiting for the first pointer interaction.
@@ -211,6 +222,9 @@ export async function mountBlackboardEmbed(repo: IDrawingRepository, embedEl: HT
   const onDocPointerDown = (e: PointerEvent) => {
     const inside = isInsideDrawing(e);
     const drawInput = isDrawingInput(e);
+    if (inputDebugEnabled()) {
+      inputDebugLog(`DOWN ${e.pointerType} in=${inside ? 'Y' : 'N'} draw=${drawInput ? 'Y' : 'N'} tgt=${dbgTarget(e.target)}${inside && drawInput ? ' OK' : ' REJECT'}`);
+    }
     if (!inside) return;
     if (!drawInput) return;
 
@@ -219,7 +233,7 @@ export async function mountBlackboardEmbed(repo: IDrawingRepository, embedEl: HT
     // Drop editor focus before anything else so Obsidian's mobile bottom toolbar (the
     // Scribble trigger) never raises for a drawing stroke.
     suppressEditorFocus();
-    drawingContainer.setCssStyles({ touchAction: 'none' });
+    drawingContainer.style.touchAction = 'none';
     strokeActive = true;
 
     surfaceManager?.setActive(surface);
@@ -249,17 +263,18 @@ export async function mountBlackboardEmbed(repo: IDrawingRepository, embedEl: HT
     if (tool !== 'eraser') {
       engine.endStroke();
     }
+    if (inputDebugEnabled()) inputDebugLog(`UP committed total=${engine.strokeManager.strokes.length}`);
     // Tell the toolbar a stroke just committed so it re-syncs undo/redo enablement now,
     // instead of leaving the undo arrow greyed out until the next tap (QA3).
     surfaceManager?.notifyStrokeEnd();
     // Do not re-fit the view on stroke end: the view is fitted once on mount and only
     // re-fitted by the ResizeObserver above. Strokes beyond the node edge are clipped.
-    void saveDrawing();
+    saveDrawing();
   };
 
-  activeDocument.addEventListener('pointerdown', onDocPointerDown, true);
-  activeDocument.addEventListener('pointermove', onDocPointerMove, true);
-  activeDocument.addEventListener('pointerup', onDocPointerUp, true);
+  document.addEventListener('pointerdown', onDocPointerDown, true);
+  document.addEventListener('pointermove', onDocPointerMove, true);
+  document.addEventListener('pointerup', onDocPointerUp, true);
   docListeners.push({ type: 'pointerdown', fn: onDocPointerDown, capture: true });
   docListeners.push({ type: 'pointermove', fn: onDocPointerMove, capture: true });
   docListeners.push({ type: 'pointerup', fn: onDocPointerUp, capture: true });
@@ -272,7 +287,7 @@ export async function mountBlackboardEmbed(repo: IDrawingRepository, embedEl: HT
   // guard no-opped and Scribble won. Suppress every touch over the embed/drawing surface;
   // the note still scrolls from outside the embed (accepted tradeoff). Pen draws via pointer
   // events, which still fire.
-  embedEl.setCssStyles({ padding: '0' });
+  embedEl.style.padding = '0';
   const blockScribble = (e: TouchEvent) => { e.preventDefault(); };
   embedEl.addEventListener('touchstart', blockScribble, { passive: false });
   embedEl.addEventListener('touchmove', blockScribble, { passive: false });
@@ -302,14 +317,14 @@ export async function mountBlackboardEmbed(repo: IDrawingRepository, embedEl: HT
       t.clientY >= rect.top - m && t.clientY <= rect.bottom + m;
     if (within) e.preventDefault();
   };
-  activeDocument.addEventListener('touchstart', blockScribbleDoc, { passive: false, capture: true });
-  activeDocument.addEventListener('touchmove', blockScribbleDoc, { passive: false, capture: true });
+  document.addEventListener('touchstart', blockScribbleDoc, { passive: false, capture: true });
+  document.addEventListener('touchmove', blockScribbleDoc, { passive: false, capture: true });
   docListeners.push({ type: 'touchstart', fn: blockScribbleDoc, capture: true });
   docListeners.push({ type: 'touchmove', fn: blockScribbleDoc, capture: true });
 
   return () => {
     for (const l of docListeners) {
-      if (l.type === '__observer__') { l.fn(null); } else { activeDocument.removeEventListener(l.type, l.fn, l.capture); }
+      if (l.type === '__observer__') { l.fn(null); } else { document.removeEventListener(l.type, l.fn, l.capture); }
     }
     embedEl.removeEventListener('touchstart', blockScribble);
     embedEl.removeEventListener('touchmove', blockScribble);

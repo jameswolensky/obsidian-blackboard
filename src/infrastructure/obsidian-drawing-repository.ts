@@ -52,8 +52,7 @@ export class ObsidianDrawingRepository implements IDrawingRepository {
   async delete(path: string): Promise<void> {
     const file = this.app.vault.getAbstractFileByPath(path);
     if (file instanceof TFile) {
-      // Move to the user's configured trash (system/vault) rather than permanently deleting.
-      await this.app.fileManager.trashFile(file);
+      await this.app.vault.delete(file);
     }
   }
 

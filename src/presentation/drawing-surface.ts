@@ -32,7 +32,7 @@ export function engineSurface(engine: DrawingEngine, save: () => void): DrawingS
     setSize: (s) => engine.toolManager.setSize(s),
     undo: () => { engine.strokeManager.undo(); engine.staticDirty = true; engine.requestRender(); save(); },
     redo: () => { engine.strokeManager.redo(); engine.staticDirty = true; engine.requestRender(); save(); },
-    get activeTool() { return engine.toolManager.activeTool; },
+    get activeTool() { return engine.toolManager.activeTool as ToolName; },
     get activeColor() { return engine.toolManager.activeColor; },
     get activeSize() { return engine.toolManager.activeSize; },
     get penColor() { return engine.toolManager.penColor; },

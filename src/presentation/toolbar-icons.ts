@@ -51,10 +51,6 @@ export const ICONS: Record<IconName, string> = {
 };
 
 export function setToolbarIcon(el: HTMLElement, name: IconName): void {
-  // These are trusted, static, hard-coded SVG strings (no user input). innerHTML HTML-parses
-  // them so `<svg>` and its shapes land in the SVG namespace and render on iOS WebKit — the
-  // DOMParser('image/svg+xml') path put them in the null namespace and drew nothing on iPad.
-  // eslint-disable-next-line no-unsanitized/property -- trusted static hard-coded SVG (no user input); HTML-parses into the SVG namespace so glyphs render on iOS WebKit
   el.innerHTML = ICONS[name];
 }
 
@@ -75,7 +71,6 @@ export function sizeToDotDiameter(size: number): number {
  */
 export function setSizeDotIcon(el: HTMLElement, size: number): void {
   const d = sizeToDotDiameter(size);
-  // eslint-disable-next-line no-unsanitized/property -- trusted static hard-coded SVG (see setToolbarIcon)
   el.innerHTML =
     `<svg viewBox="0 0 24 24" fill="none" aria-hidden="true">` +
     `<circle cx="12" cy="12" r="${d / 2}" fill="#ffffff" stroke="none"/></svg>`;

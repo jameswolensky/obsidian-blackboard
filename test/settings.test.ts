@@ -29,9 +29,9 @@ describe('BlackboardSettingTab', () => {
 
     tab.display();
 
-    const headings = tab.containerEl.querySelectorAll('.setting-item-heading .setting-item-name');
+    const headings = tab.containerEl.querySelectorAll('h2');
     const texts = Array.from(headings).map((h) => h.textContent);
-    expect(texts).toEqual(['File storage', 'Toolbar palette', 'Toolbar']);
+    expect(texts).toEqual(['File Storage', 'Toolbar palette', 'Toolbar']);
   });
 
   it('renders eight palette color controls in its own section, not under Drawing Defaults', () => {
@@ -43,7 +43,7 @@ describe('BlackboardSettingTab', () => {
     // Eight color pickers, one per palette entry.
     expect(settingSpy).toHaveBeenCalledTimes(8);
     // No Drawing Defaults section exists at all.
-    const texts = Array.from(tab.containerEl.querySelectorAll('.setting-item-heading .setting-item-name')).map((h) => h.textContent);
+    const texts = Array.from(tab.containerEl.querySelectorAll('h2')).map((h) => h.textContent);
     expect(texts).not.toContain('Drawing Defaults');
   });
 
@@ -72,7 +72,7 @@ describe('BlackboardSettingTab', () => {
 
     tab.display();
 
-    const texts = Array.from(tab.containerEl.querySelectorAll('.setting-item-heading .setting-item-name')).map((h) => h.textContent);
+    const texts = Array.from(tab.containerEl.querySelectorAll('h2')).map((h) => h.textContent);
     expect(texts).not.toContain('Drawing Defaults');
   });
 
@@ -81,7 +81,7 @@ describe('BlackboardSettingTab', () => {
 
     tab.display();
 
-    const texts = Array.from(tab.containerEl.querySelectorAll('.setting-item-heading .setting-item-name')).map((h) => h.textContent);
+    const texts = Array.from(tab.containerEl.querySelectorAll('h2')).map((h) => h.textContent);
     expect(texts).not.toContain('Input');
   });
 

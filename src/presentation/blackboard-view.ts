@@ -1,5 +1,5 @@
 import { TextFileView, WorkspaceLeaf } from 'obsidian';
-import type { BlackboardFile, PluginSettings, Stroke } from '../domain/entities';
+import type { BlackboardFile, PluginSettings } from '../domain/entities';
 import { FILE_EXTENSION } from '../domain/entities';
 import { serialize, deserialize } from '../application/file-format';
 import { DrawingEngine } from '../infrastructure/canvas-renderer';
@@ -7,8 +7,17 @@ import type { ToolManager } from '../domain/tool-manager';
 import type { IDrawingRepository } from '../domain/ports';
 import type { DocumentStore, SharedDocumentHandle } from '../application/document-store';
 import { eraseAtPoint } from '../application/eraser-service';
+import { inputDebugEnabled, inputDebugLog } from './input-debug';
 import type { SurfaceManager } from './surface-manager';
 import { engineSurface, type DrawingSurface } from './drawing-surface';
+
+function dbgTarget(t: EventTarget | null): string {
+  const el = t as HTMLElement | null;
+  if (!el || !el.tagName) return '?';
+  const cls = typeof el.className === 'string' && el.className.trim() ? '.' + el.className.trim().split(/\s+/)[0] : '';
+  return el.tagName.toLowerCase() + cls;
+}
+
 
 export const VIEW_TYPE = 'blackboard-view';
 export { FILE_EXTENSION };
@@ -29,9 +38,7 @@ export class BlackboardView extends TextFileView {
   private attaching: boolean = false;
   private surface: DrawingSurface | null = null;
   private isEmbedded: boolean = false;
-  // Method syntax (bivariant params) so specific DOM handlers like (e: PointerEvent) => void
-  // assign cleanly, while cleanup can still call fn (with a null placeholder for observers).
-  private docListeners: Array<{ type: string; fn(this: void, e: unknown): void; capture: boolean }> = [];
+  private docListeners: Array<{ type: string; fn: (e: any) => void; capture: boolean }> = [];
   private strokeActive: boolean = false;
   // Standalone view only: the surface fills the pane and is an infinite pan + zoom canvas
   // over the engine's view transform. On open (and on resize) the drawing is fitted into
@@ -139,14 +146,14 @@ export class BlackboardView extends TextFileView {
     // Parse file dimensions first
     let fileWidth = 800;
     let fileHeight = 600;
-    let fileStrokes: Stroke[] = [];
+    let fileStrokes: any[] = [];
     if (this.fileData) {
       try {
         const result = deserialize(this.fileData);
         fileWidth = result.file.width;
         fileHeight = result.file.height;
         fileStrokes = result.file.strokes;
-      } catch { /* ignore malformed data; start empty */ }
+      } catch {}
     }
 
     // Share the plugin's single ToolManager so tool/colour/size are global across every
@@ -164,7 +171,7 @@ export class BlackboardView extends TextFileView {
     } else {
       // Standalone: an infinite pan + zoom canvas. The surface fills the pane and
       // navigation is via the view transform (pan/zoom), NOT document scroll.
-      container.addClass('blackboard-standalone-host');
+      container.style.position = 'relative';
       this.layoutStandalone();
       this.resizeObserver = new ResizeObserver(() => this.layoutStandalone());
       this.resizeObserver.observe(container);
@@ -222,7 +229,7 @@ export class BlackboardView extends TextFileView {
       version: 3,
       width: hasContent ? Math.round(cb.width) : 800,
       height: hasContent ? Math.round(cb.height) : 600,
-      strokes: JSON.parse(JSON.stringify(this.engine!.strokeManager.strokes)) as Stroke[],
+      strokes: JSON.parse(JSON.stringify(this.engine!.strokeManager.strokes)),
       background: { color: 'transparent' },
       contentBounds: hasContent ? cb : undefined,
     };
@@ -284,7 +291,7 @@ export class BlackboardView extends TextFileView {
         } else {
           this.layoutStandalone();
         }
-      } catch { /* ignore layout/deserialize failure */ }
+      } catch {}
       this.engine.staticDirty = true;
       this.engine.render();
     }
@@ -303,7 +310,7 @@ export class BlackboardView extends TextFileView {
     if (this.engine && this.file && !this.handle) {
       try {
         await this.app.vault.modify(this.file, this.getViewData());
-      } catch { /* ignore flush failure on close */ }
+      } catch {}
     }
     if (this.handle) {
       this.handle.release();
@@ -313,7 +320,7 @@ export class BlackboardView extends TextFileView {
       if (listener.type === '__observer__') {
         listener.fn(null);
       } else {
-        activeDocument.removeEventListener(listener.type, listener.fn, listener.capture);
+        document.removeEventListener(listener.type, listener.fn, listener.capture);
       }
     }
     this.docListeners = [];
@@ -360,8 +367,8 @@ export class BlackboardView extends TextFileView {
     if (!canvasNode) return;
 
     const hideBlocker = () => {
-      const blocker = canvasNode.querySelector('.canvas-node-content-blocker');
-      if (blocker) (blocker as HTMLElement).setCssStyles({ display: 'none' });
+      const blocker = canvasNode!.querySelector('.canvas-node-content-blocker') as HTMLElement | null;
+      if (blocker) blocker.style.display = 'none';
     };
     hideBlocker();
 
@@ -428,6 +435,9 @@ export class BlackboardView extends TextFileView {
     const onDocPointerDown = (e: PointerEvent) => {
       const inside = isInsideDrawing(e);
       const drawInput = isDrawingInput(e);
+      if (inputDebugEnabled()) {
+        inputDebugLog(`DOWN ${e.pointerType} in=${inside ? 'Y' : 'N'} draw=${drawInput ? 'Y' : 'N'} tgt=${dbgTarget(e.target)}${inside && drawInput ? ' OK' : ' REJECT'}`);
+      }
       if (!inside) return;
 
       // Standalone finger navigation: a touch pans/pinch-zooms the view, it never draws.
@@ -544,11 +554,12 @@ export class BlackboardView extends TextFileView {
       // Re-sync the toolbar (undo/redo enablement) the instant a stroke or erase commits,
       // so the undo arrow lights up immediately rather than on the next tap (QA3).
       this.surfaceManager?.notifyStrokeEnd();
+      if (inputDebugEnabled()) inputDebugLog(`UP committed total=${engine.strokeManager.strokes.length}`);
     };
 
-    activeDocument.addEventListener('pointerdown', onDocPointerDown, true);
-    activeDocument.addEventListener('pointermove', onDocPointerMove, true);
-    activeDocument.addEventListener('pointerup', onDocPointerUp, true);
+    document.addEventListener('pointerdown', onDocPointerDown, true);
+    document.addEventListener('pointermove', onDocPointerMove, true);
+    document.addEventListener('pointerup', onDocPointerUp, true);
 
     this.docListeners.push({ type: 'pointerdown', fn: onDocPointerDown, capture: true });
     this.docListeners.push({ type: 'pointermove', fn: onDocPointerMove, capture: true });
@@ -577,8 +588,8 @@ export class BlackboardView extends TextFileView {
       const onKeyUp = (e: KeyboardEvent) => {
         if (e.code === 'Space') { this.spaceDown = false; this.spacePanActive = false; this.spacePanPrev = null; }
       };
-      activeDocument.addEventListener('keydown', onKeyDown, true);
-      activeDocument.addEventListener('keyup', onKeyUp, true);
+      document.addEventListener('keydown', onKeyDown, true);
+      document.addEventListener('keyup', onKeyUp, true);
       this.docListeners.push({ type: 'keydown', fn: onKeyDown, capture: true });
       this.docListeners.push({ type: 'keyup', fn: onKeyUp, capture: true });
     }

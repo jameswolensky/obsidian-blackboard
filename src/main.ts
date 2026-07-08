@@ -1,4 +1,4 @@
-import { Plugin, TFile, View } from 'obsidian';
+import { Plugin, TFile } from 'obsidian';
 import type { PluginSettings } from './domain/entities';
 import { DEFAULT_PLUGIN_SETTINGS, DEFAULT_TOOL_STATE, validateSettings } from './domain/entities';
 import type { IDrawingRepository } from './domain/ports';
@@ -88,7 +88,7 @@ export default class BlackboardPlugin extends Plugin {
       callback: async () => {
         try {
           await insertDrawingAtCursor(this.app, this.settings, this.createDrawingUseCase, this.repo, this.surfaceManager, this.toolManager, this.documentStore);
-        } catch { /* ignore */ }
+        } catch {}
       },
     });
 
@@ -98,7 +98,7 @@ export default class BlackboardPlugin extends Plugin {
       callback: () => {
         try {
           insertExistingDrawing(this.app, this.repo, this.settings, this.surfaceManager, this.toolManager, this.documentStore);
-        } catch { /* ignore */ }
+        } catch {}
       },
     });
 
@@ -107,7 +107,7 @@ export default class BlackboardPlugin extends Plugin {
     patchCanvas(this.app, this, this.settings, this.repo, this.createDrawingUseCase, this.surfaceManager, this.toolManager, this.documentStore);
 
     const processEmbeds = () => {
-      const embeds = activeDocument.querySelectorAll('.internal-embed.mod-generic.is-loaded');
+      const embeds = document.querySelectorAll('.internal-embed.mod-generic.is-loaded');
       embeds.forEach((embedEl) => {
         const src = (embedEl as HTMLElement).getAttribute('src') || '';
         if (!src.endsWith('.' + FILE_EXTENSION)) return;
@@ -122,13 +122,13 @@ export default class BlackboardPlugin extends Plugin {
           // Explicit |WxH / |N% alias overrides the default.
           if (size.width !== null) (embedEl as HTMLElement).style.width = size.width;
           if (size.height !== null) (embedEl as HTMLElement).style.height = size.height;
-          void mountBlackboardEmbed(this.repo, embedEl as HTMLElement, file.path, this.settings, this.surfaceManager, this.toolManager, this.documentStore);
+          mountBlackboardEmbed(this.repo, embedEl as HTMLElement, file.path, this.settings, this.surfaceManager, this.toolManager, this.documentStore);
         } else {
           // No alias: render at the drawing's saved size, centred, capped to the note
           // width. Reading the file first keeps the embed image-like rather than
           // stretching to full width.
           void this.applySavedEmbedSize(embedEl as HTMLElement, file.path).then(() => {
-            void mountBlackboardEmbed(this.repo, embedEl as HTMLElement, file.path, this.settings, this.surfaceManager, this.toolManager, this.documentStore);
+            mountBlackboardEmbed(this.repo, embedEl as HTMLElement, file.path, this.settings, this.surfaceManager, this.toolManager, this.documentStore);
           });
         }
       });
@@ -138,7 +138,7 @@ export default class BlackboardPlugin extends Plugin {
 
     const embedObserver = new MutationObserver(processEmbeds);
     this.registerEvent(this.app.workspace.on('layout-change', () => {
-      const activeEl = activeDocument.querySelector('.workspace-leaf.mod-active .view-content');
+      const activeEl = document.querySelector('.workspace-leaf.mod-active .view-content');
       if (activeEl && !(activeEl as HTMLElement).dataset.bbObserved) {
         (activeEl as HTMLElement).dataset.bbObserved = 'true';
         embedObserver.observe(activeEl, { childList: true, subtree: true });
@@ -146,7 +146,7 @@ export default class BlackboardPlugin extends Plugin {
     }));
     this.register(() => embedObserver.disconnect());
 
-    window.setTimeout(processEmbeds, 1000);
+    setTimeout(processEmbeds, 1000);
 
     const folder = this.settings.drawingFolder;
     if (folder && !this.app.vault.getAbstractFileByPath(folder)) {
@@ -165,9 +165,9 @@ export default class BlackboardPlugin extends Plugin {
       try {
         const content = await this.app.vault.read(file);
         this.documentStore.reconcile(file.path, content);
-      } catch { /* ignore read/reconcile failure */ }
+      } catch {}
       if (this.settings.autoExportSvg) {
-        try { await this.exportSvgUseCase.execute(file.path, this.settings.svgExportPath); } catch { /* ignore export failure */ }
+        try { await this.exportSvgUseCase.execute(file.path, this.settings.svgExportPath); } catch {}
       }
     }));
 
@@ -188,9 +188,8 @@ export default class BlackboardPlugin extends Plugin {
   }
 
   private routeToolbar(): void {
-    const view = this.app.workspace.getActiveViewOfType(View) as unknown as
+    const view = this.app.workspace.activeLeaf?.view as
       | { contentEl?: HTMLElement; getViewType?: () => string }
-      | null
       | undefined;
     const contentEl = view?.contentEl ?? null;
     // Persistent pill: on Markdown/Canvas views the toolbar shows a collapsed pill even with no
@@ -213,20 +212,17 @@ export default class BlackboardPlugin extends Plugin {
       const avail = embedEl.parentElement?.clientWidth || embedEl.clientWidth || file.width || 0;
       const fit = fitSavedEmbedSize(file.width || 0, file.height || 0, avail);
       if (!fit) return;
-      embedEl.setCssStyles({
-        width: fit.width + 'px',
-        height: fit.height + 'px',
-        marginLeft: 'auto',
-        marginRight: 'auto',
-      });
+      embedEl.style.width = fit.width + 'px';
+      embedEl.style.height = fit.height + 'px';
+      embedEl.style.marginLeft = 'auto';
+      embedEl.style.marginRight = 'auto';
     } catch {
       // Couldn't read the file; leave the embed at its default size.
     }
   }
 
   async loadSettings(): Promise<void> {
-    const stored = (await this.loadData()) as Partial<PluginSettings> | null;
-    this.settings = Object.assign({}, DEFAULT_PLUGIN_SETTINGS, stored ?? {});
+    this.settings = Object.assign({}, DEFAULT_PLUGIN_SETTINGS, await this.loadData());
     this.validateSettings();
   }
 

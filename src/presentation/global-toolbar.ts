@@ -5,16 +5,6 @@ import { setToolbarIcon, setSizeDotIcon, type IconName } from './toolbar-icons';
 import type { PluginSettings } from '../domain/entities';
 import { DEFAULT_PLUGIN_SETTINGS } from '../domain/entities';
 
-// Minimal typings for the parts of iro.js we use (the package ships loose types).
-interface IroColorPickerInstance {
-  on(event: string, cb: (color: { hexString: string }) => void): void;
-  color: { hexString: string };
-}
-interface IroStatic {
-  ColorPicker: (el: HTMLElement, opts: unknown) => IroColorPickerInstance;
-  ui: { Wheel: unknown; Slider: unknown };
-}
-
 const TOOLS: Array<{ name: ToolName; icon: IconName; label: string }> = [
   { name: 'pen', icon: 'pen', label: 'Pen' },
   { name: 'highlighter', icon: 'highlighter', label: 'Highlighter' },
@@ -42,7 +32,7 @@ export class GlobalToolbar {
   private sizeRow!: HTMLElement;
   private sizeBtn!: HTMLElement;
   // iro.ColorPicker — typed loosely because iro ships no strict types we can import
-  private picker: IroColorPickerInstance | null = null;
+  private picker: any = null;
   private surface: DrawingSurface | null = null;
   private anchorEl: HTMLElement | null = null;
   // Anchor for the persistent pill on a Markdown/Canvas view that has no active surface yet.
@@ -99,9 +89,10 @@ export class GlobalToolbar {
   /** Read env(safe-area-inset-bottom) via a probe so the palette clears the
    * iPad home indicator. Zero on desktop. */
   private measureSafeBottom(): void {
-    const probe = createDiv();
-    probe.className = 'blackboard-safe-area-probe';
-    activeDocument.body.appendChild(probe);
+    const probe = document.createElement('div');
+    probe.style.cssText =
+      'position:fixed;left:0;bottom:0;width:0;height:env(safe-area-inset-bottom);visibility:hidden;pointer-events:none;';
+    document.body.appendChild(probe);
     this.safeBottom = probe.getBoundingClientRect().height || 0;
     probe.remove();
   }
@@ -138,7 +129,7 @@ export class GlobalToolbar {
     }
     this.root.appendChild(this.separator());
 
-    this.colorWell = createEl('button');
+    this.colorWell = document.createElement('button');
     // Spectrum-only: the conic rainbow fills the whole well, with no center-color dot.
     this.colorWell.className = 'blackboard-gt-swatch blackboard-gt-colorwell';
     this.colorWell.setAttribute('aria-label', 'Color');
@@ -192,13 +183,13 @@ export class GlobalToolbar {
 
   private buildColorPopover(): void {
     this.colorPopover = this.host.createDiv({ cls: 'blackboard-gt-popover blackboard-gt-color-popover' });
-    this.colorPopover.setCssStyles({ display: 'none' });
+    this.colorPopover.style.display = 'none';
     this.colorPopover.addEventListener('pointerdown', (e) => e.stopPropagation());
 
     const swatches = this.colorPopover.createDiv({ cls: 'blackboard-gt-swatches' });
     // The eight swatches are pure shortcuts sourced from settings.paletteColors, in order.
     for (const color of this.paletteColors) {
-      const sw = createEl('button');
+      const sw = document.createElement('button');
       sw.className = 'blackboard-gt-swatch';
       sw.style.backgroundColor = color;
       sw.addEventListener('pointerup', (e) => { e.stopPropagation(); this.pickColor(color); });
@@ -207,7 +198,7 @@ export class GlobalToolbar {
 
     const wheel = this.colorPopover.createDiv({ cls: 'blackboard-gt-wheel' });
     try {
-      const I = iro as unknown as IroStatic;
+      const I = iro as any;
       this.picker = I.ColorPicker(wheel, {
         width: 150,
         color: '#ffffff',
@@ -227,7 +218,7 @@ export class GlobalToolbar {
 
   private buildSizePopover(): void {
     this.sizePopover = this.host.createDiv({ cls: 'blackboard-gt-popover blackboard-gt-size-popover' });
-    this.sizePopover.setCssStyles({ display: 'none' });
+    this.sizePopover.style.display = 'none';
     this.sizePopover.addEventListener('pointerdown', (e) => e.stopPropagation());
     const label = this.sizePopover.createDiv({ cls: 'blackboard-gt-popover-label' });
     label.textContent = 'Brush size';
@@ -250,7 +241,7 @@ export class GlobalToolbar {
     const min = sizes[0];
     const max = sizes[sizes.length - 1];
     for (const size of sizes) {
-      const dot = createEl('button');
+      const dot = document.createElement('button');
       dot.className = 'blackboard-gt-size-dot';
       dot.dataset.size = String(size);
       const inner = dot.createDiv({ cls: 'blackboard-gt-size-dot-inner' });
@@ -277,7 +268,7 @@ export class GlobalToolbar {
     this.surface = s;
     if (s) {
       // Anchor to the active view's content area so the toolbar never bleeds over sidebars.
-      this.anchorEl = el ? ((el.closest('.view-content')) ?? el) : null;
+      this.anchorEl = el ? ((el.closest('.view-content') as HTMLElement) ?? el) : null;
       // A real drawing means the full toolbar, not the pill. If we were only showing the
       // no-surface pill (forced collapsed), expand now; but preserve a user's own collapse
       // choice when switching between two actual drawings.
@@ -297,7 +288,7 @@ export class GlobalToolbar {
   /** Tell the toolbar which Markdown/Canvas view content to anchor the persistent pill to when
    * no surface is active. Pass null on views where drawing makes no sense (hides the toolbar). */
   setHost(anchorEl: HTMLElement | null): void {
-    this.hostEl = anchorEl ? ((anchorEl.closest('.view-content')) ?? anchorEl) : null;
+    this.hostEl = anchorEl ? ((anchorEl.closest('.view-content') as HTMLElement) ?? anchorEl) : null;
     if (!this.surface) this.refreshNoSurface();
   }
 
@@ -431,11 +422,11 @@ export class GlobalToolbar {
   private togglePopover(which: 'color' | 'size'): void {
     const target = which === 'color' ? this.colorPopover : this.sizePopover;
     const other = which === 'color' ? this.sizePopover : this.colorPopover;
-    other.setCssStyles({ display: 'none' });
+    other.style.display = 'none';
     const open = target.style.display === 'none';
     this.closePopovers();
     if (open) {
-      target.setCssStyles({ display: '' });
+      target.style.display = '';
       if (which === 'color' && this.picker && this.surface) {
         try { this.picker.color.hexString = this.surface.activeColor; } catch { /* ignore */ }
       }
@@ -448,8 +439,8 @@ export class GlobalToolbar {
   }
 
   private closePopovers(): void {
-    this.colorPopover.setCssStyles({ display: 'none' });
-    this.sizePopover.setCssStyles({ display: 'none' });
+    this.colorPopover.style.display = 'none';
+    this.sizePopover.style.display = 'none';
   }
 
   private positionPopover(p: HTMLElement): void {
@@ -469,8 +460,8 @@ export class GlobalToolbar {
     this.closePopovers();
     // Allow expand/collapse in the host-only (no-surface) state too, not just when drawing.
     if (!this.surface && !this.hostEl) return;
-    this.root.setCssStyles({ display: c ? 'none' : '' });
-    this.pill.setCssStyles({ display: c ? '' : 'none' });
+    this.root.style.display = c ? 'none' : '';
+    this.pill.style.display = c ? '' : 'none';
     if (c) { this.updatePillIcon(); this.placePill(); }
     else this.placeToolbar();
   }
@@ -483,18 +474,18 @@ export class GlobalToolbar {
 
   private show(): void {
     // Set display BEFORE measuring so offsetWidth/Height are non-zero.
-    if (this.collapsed) { this.pill.setCssStyles({ display: '' }); this.root.setCssStyles({ display: 'none' }); this.updatePillIcon(); this.placePill(); }
-    else { this.root.setCssStyles({ display: '' }); this.pill.setCssStyles({ display: 'none' }); this.placeToolbar(); }
+    if (this.collapsed) { this.pill.style.display = ''; this.root.style.display = 'none'; this.updatePillIcon(); this.placePill(); }
+    else { this.root.style.display = ''; this.pill.style.display = 'none'; this.placeToolbar(); }
   }
 
   private hide(): void {
-    this.root.setCssStyles({ display: 'none' });
-    this.pill.setCssStyles({ display: 'none' });
+    this.root.style.display = 'none';
+    this.pill.style.display = 'none';
     this.closePopovers();
   }
 
   private iconButton(icon: IconName, label: string): HTMLButtonElement {
-    const btn = createEl('button');
+    const btn = document.createElement('button');
     btn.className = 'blackboard-gt-btn';
     btn.setAttribute('aria-label', label);
     setToolbarIcon(btn, icon);
@@ -502,7 +493,7 @@ export class GlobalToolbar {
   }
 
   private separator(): HTMLElement {
-    const s = createDiv();
+    const s = document.createElement('div');
     s.className = 'blackboard-gt-sep';
     return s;
   }

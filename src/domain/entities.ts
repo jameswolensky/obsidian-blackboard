@@ -105,30 +105,27 @@ export function createDefaultFile(_settings: PluginSettings): BlackboardFile {
   };
 }
 
-export function validateFileData(raw: unknown): BlackboardFile | null {
+export function validateFileData(raw: any): BlackboardFile | null {
   if (!raw || typeof raw !== 'object') return null;
-  const obj = raw as Record<string, unknown>;
-  if (typeof obj.version !== 'number') return null;
-  if (!Array.isArray(obj.strokes)) return null;
+  if (typeof raw.version !== 'number') return null;
+  if (!Array.isArray(raw.strokes)) return null;
 
-  const strokes = (obj.strokes as unknown[]).filter((s): s is Stroke => {
-    if (!s || typeof s !== 'object') return false;
-    const so = s as Record<string, unknown>;
-    return typeof so.id === 'string' &&
-      Array.isArray(so.points) &&
-      typeof so.color === 'string' &&
-      typeof so.tool === 'string';
-  });
+  const strokes = raw.strokes.filter((s: any) =>
+    s && typeof s.id === 'string' &&
+    Array.isArray(s.points) &&
+    typeof s.color === 'string' &&
+    typeof s.tool === 'string'
+  );
 
   const result: BlackboardFile = {
-    version: obj.version,
-    width: (typeof obj.width === 'number' && obj.width > 0) ? obj.width : 800,
-    height: (typeof obj.height === 'number' && obj.height > 0) ? obj.height : 600,
+    version: raw.version,
+    width: (typeof raw.width === 'number' && raw.width > 0) ? raw.width : 800,
+    height: (typeof raw.height === 'number' && raw.height > 0) ? raw.height : 600,
     strokes,
-    background: (obj.background as { color: string } | undefined) || { color: 'transparent' },
+    background: raw.background || { color: 'transparent' },
   };
-  if (obj.contentBounds && typeof obj.contentBounds === 'object') {
-    const cb = obj.contentBounds as Record<string, unknown>;
+  if (raw.contentBounds && typeof raw.contentBounds === 'object') {
+    const cb = raw.contentBounds;
     if (typeof cb.x === 'number' && typeof cb.y === 'number' &&
         typeof cb.width === 'number' && cb.width >= 0 &&
         typeof cb.height === 'number' && cb.height >= 0) {

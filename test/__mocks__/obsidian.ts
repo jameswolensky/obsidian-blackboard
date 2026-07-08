@@ -1,11 +1,6 @@
 import { vi } from 'vitest';
 
 export class App {}
-export class View {
-  contentEl: HTMLElement = document.createElement('div');
-  getViewType(): string { return ''; }
-  constructor(_leaf?: any) {}
-}
 export class TFile {
   path = '';
   basename = '';
@@ -44,18 +39,8 @@ export class PluginSettingTab {
 }
 export class Setting {
   static _lastOnChangeCallbacks: Array<(value: any) => void> = [];
-  settingEl: HTMLElement;
-  nameEl: HTMLElement;
-  constructor(containerEl: HTMLElement) {
-    this.settingEl = document.createElement('div');
-    this.settingEl.className = 'setting-item';
-    this.nameEl = document.createElement('div');
-    this.nameEl.className = 'setting-item-name';
-    this.settingEl.appendChild(this.nameEl);
-    containerEl.appendChild(this.settingEl);
-  }
-  setName(name: string) { this.nameEl.textContent = name; return this; }
-  setHeading() { this.settingEl.classList.add('setting-item-heading'); return this; }
+  constructor(_containerEl: HTMLElement) {}
+  setName(_name: string) { return this; }
   setDesc(_desc: string) { return this; }
   addText(cb: any) {
     let onChangeCb: any;

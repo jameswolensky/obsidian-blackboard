@@ -17,7 +17,7 @@ export function deserialize(data: string): { file: BlackboardFile; warnings: str
     };
   }
 
-  let parsed: unknown;
+  let parsed: any;
   try {
     parsed = JSON.parse(data);
   } catch {
@@ -29,12 +29,8 @@ export function deserialize(data: string): { file: BlackboardFile; warnings: str
     };
   }
 
-  const parsedVersion =
-    parsed && typeof parsed === 'object'
-      ? (parsed as Record<string, unknown>).version
-      : undefined;
-  if (typeof parsedVersion === 'number' && parsedVersion > 3) {
-    warnings.push('File version ' + parsedVersion + ' is newer than supported version 3');
+  if (typeof parsed.version === 'number' && parsed.version > 3) {
+    warnings.push('File version ' + parsed.version + ' is newer than supported version 3');
     readonly = true;
   }
 

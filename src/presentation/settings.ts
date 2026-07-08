@@ -9,22 +9,11 @@ export class BlackboardSettingTab extends PluginSettingTab {
     this.plugin = plugin;
   }
 
-  /**
-   * Declarative settings hook (Obsidian 1.13+). The imperative `display()` below remains the
-   * source of truth for rendering this tab's dynamic controls (the conditional SVG-path row and
-   * the eight generated palette pickers), which don't map cleanly onto static definitions. This
-   * method exists so the tab is recognised by the newer settings-search API without changing how
-   * the settings render on any currently supported app version.
-   */
-  getSettingDefinitions(): unknown[] {
-    return [];
-  }
-
   display(): void {
     const { containerEl } = this;
     containerEl.empty();
 
-    new Setting(containerEl).setName('File storage').setHeading();
+    containerEl.createEl('h2', { text: 'File Storage' });
 
     new Setting(containerEl)
       .setName('Drawing folder')
@@ -64,7 +53,7 @@ export class BlackboardSettingTab extends PluginSettingTab {
     if (this.plugin.settings.autoExportSvg) {
       new Setting(containerEl)
         .setName('SVG export path')
-        .setDesc('Folder for exported SVG files (empty = same folder as drawing)')
+        .setDesc('Folder for exported SVGs (empty = same folder as drawing)')
         .addText((text) =>
           text.setValue(this.plugin.settings.svgExportPath).onChange(async (value) => {
             this.plugin.settings.svgExportPath = value;
@@ -75,7 +64,7 @@ export class BlackboardSettingTab extends PluginSettingTab {
 
     // Toolbar palette: its own dedicated section. The eight controls map 1:1 to the
     // color-popover swatches, in display order (left-to-right, top-to-bottom).
-    new Setting(containerEl).setName('Toolbar palette').setHeading();
+    containerEl.createEl('h2', { text: 'Toolbar palette' });
     for (let i = 0; i < this.plugin.settings.paletteColors.length; i++) {
       new Setting(containerEl)
         .setName(`Color ${i + 1}`)
@@ -89,7 +78,7 @@ export class BlackboardSettingTab extends PluginSettingTab {
     }
 
     // Toolbar behaviour (distinct from the palette colors above).
-    new Setting(containerEl).setName('Toolbar').setHeading();
+    containerEl.createEl('h2', { text: 'Toolbar' });
 
     new Setting(containerEl)
       .setName('Show toolbar pill')
