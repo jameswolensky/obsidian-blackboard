@@ -52,12 +52,17 @@ export const ICONS: Record<IconName, string> = {
 
 /**
  * Turn a trusted, static SVG string into a real DOM node (no `innerHTML` — Obsidian's
- * review guidelines forbid it). Parsing the exact same markup keeps rendering identical
- * across platforms, which is the whole reason we ship our own SVGs (see the file header).
+ * review guidelines forbid it).
+ *
+ * We parse as `text/html`, NOT `image/svg+xml`: the HTML fragment parser applies the
+ * SVG foreign-content rules and places `<svg>` and its shapes in the SVG namespace —
+ * exactly what `innerHTML` did before. Parsing as `image/svg+xml` is namespace-strict,
+ * so markup without an `xmlns` lands in the null namespace; that displays on
+ * jsdom/Chromium but renders NOTHING on iPad WebKit — the "0 toolbar icons" regression.
  */
 function svgToNode(markup: string): Node {
-  const doc = new DOMParser().parseFromString(markup, 'image/svg+xml');
-  return activeDocument.importNode(doc.documentElement, true);
+  const doc = new DOMParser().parseFromString(markup, 'text/html');
+  return activeDocument.importNode(doc.body.firstElementChild as Element, true);
 }
 
 export function setToolbarIcon(el: HTMLElement, name: IconName): void {
