@@ -300,10 +300,13 @@
 }
 
 .blackboard-global-toolbar .blackboard-gt-btn {
-  /* iOS/WKWebView applies native button styling that overrides width/height/
-     border-radius — reset it so the flat radius below holds on WKWebView too. */
-  -webkit-appearance: none;
-  appearance: none;
+  /* iOS/WKWebView renders the NATIVE button control (grey fill, system shape) unless
+     appearance is forced off. Obsidian's own button rules can win the cascade on-device,
+     re-enabling it — which showed up as a grey, boxy "selected" tool with no accent.
+     Force it off with !important so our styling always applies (matches the beta that
+     rendered correctly on real iPad). */
+  -webkit-appearance: none !important;
+  appearance: none !important;
   box-sizing: border-box;
   display: flex;
   align-items: center;
@@ -329,7 +332,14 @@
   height: clamp(20px, 4.6vw, 24px);
 }
 .blackboard-global-toolbar .blackboard-gt-btn:hover { background: var(--background-modifier-hover); }
-.blackboard-global-toolbar .blackboard-gt-btn.active { color: var(--text-on-accent); background: var(--interactive-accent); }
+/* The selected tool's accent fill must win over hover, Obsidian's `button` rules, and the
+   native control — force it. Keep it accent-colored even while hovered. */
+.blackboard-global-toolbar .blackboard-gt-btn.active,
+.blackboard-global-toolbar .blackboard-gt-btn.active:hover {
+  color: var(--text-on-accent) !important;
+  background: var(--interactive-accent) !important;
+  border-radius: var(--radius-s) !important;
+}
 .blackboard-global-toolbar .blackboard-gt-btn:disabled { opacity: 0.4; cursor: default; }
 
 .blackboard-global-toolbar .blackboard-gt-sep {
