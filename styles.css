@@ -321,6 +321,8 @@
   color: var(--text-normal);
   cursor: pointer;
   touch-action: manipulation;
+  /* Kill the iOS grey tap flash (a hard rectangle that ignores border-radius). */
+  -webkit-tap-highlight-color: transparent;
 }
 .blackboard-global-toolbar .blackboard-gt-btn svg {
   width: clamp(20px, 4.6vw, 24px);
@@ -417,41 +419,45 @@
 /* On the accent fill, the inner dot switches to the on-accent colour to stay visible. */
 .blackboard-gt-size-dot.active .blackboard-gt-size-dot-inner { background: var(--text-on-accent); }
 
-/* iPad ONLY: Obsidian's `.is-tablet button:not(.clickable-icon)` rule (specificity
-   0,2,1) injects padding into every <button>, beating our plain class selectors and
-   turning the round controls into ovals with their icons clipped to nothing. Instead of
-   forcing the override, we scope these rules under `.is-tablet` with the full class
-   chain so each selector is specificity (0,3,0) and cleanly outranks (0,2,1). Desktop
-   has no `.is-tablet` ancestor, so the base rules above still apply there unchanged.
-   Root cause verified in real iPad WebKit via test/webkit. */
-.is-tablet .blackboard-global-toolbar .blackboard-gt-btn,
-.is-tablet .blackboard-global-toolbar .blackboard-gt-swatch,
-.is-tablet .blackboard-gt-popover .blackboard-gt-swatch,
-.is-tablet .blackboard-global-toolbar .blackboard-gt-colorwell,
-.is-tablet .blackboard-gt-popover .blackboard-gt-size-dot {
-  padding: 0;
-  box-sizing: border-box;
+/* iPad: Obsidian's mobile stylesheet styles every `<button>` (padding + its own
+   border-radius) using `!important`, which NO selector specificity can outrank — only
+   our own `!important` can. A prior refactor traded these `!important` overrides for a
+   specificity-only (.is-tablet) approach; on iPad that quietly LOST to Obsidian's
+   `!important`, squaring the round controls (the selected tool's accent lost its radius)
+   and clipping icons. Re-assert geometry AND the shape with `!important`. Desktop has no
+   such injection, so this simply restates the intended values there — no visual change. */
+.blackboard-global-toolbar .blackboard-gt-btn,
+.blackboard-gt-swatch,
+.blackboard-gt-colorwell,
+.blackboard-gt-size-dot {
+  padding: 0 !important;
+  box-sizing: border-box !important;
 }
-.is-tablet .blackboard-global-toolbar .blackboard-gt-btn {
-  width: clamp(34px, 7vw, 42px);
-  height: clamp(34px, 7vw, 42px);
-  min-width: clamp(34px, 7vw, 42px);
+.blackboard-global-toolbar .blackboard-gt-btn {
+  width: clamp(34px, 7vw, 42px) !important;
+  height: clamp(34px, 7vw, 42px) !important;
+  min-width: clamp(34px, 7vw, 42px) !important;
+  /* The selected-tool accent must keep its rounded corners on iPad. */
+  border-radius: var(--radius-s) !important;
 }
-.is-tablet .blackboard-global-toolbar .blackboard-gt-swatch,
-.is-tablet .blackboard-gt-popover .blackboard-gt-swatch {
-  width: 28px;
-  height: 28px;
-  min-width: 28px;
+.blackboard-gt-swatch,
+.blackboard-gt-colorwell {
+  border-radius: 50% !important; /* colour swatches + rainbow well stay perfectly circular */
 }
-.is-tablet .blackboard-global-toolbar .blackboard-gt-colorwell {
-  width: clamp(30px, 6.5vw, 36px);
-  height: clamp(30px, 6.5vw, 36px);
-  min-width: clamp(30px, 6.5vw, 36px);
+.blackboard-gt-swatch {
+  width: 28px !important;
+  height: 28px !important;
+  min-width: 28px !important;
 }
-.is-tablet .blackboard-gt-popover .blackboard-gt-size-dot {
-  width: 32px;
-  height: 32px;
-  min-width: 32px;
+.blackboard-gt-colorwell {
+  width: clamp(30px, 6.5vw, 36px) !important;
+  height: clamp(30px, 6.5vw, 36px) !important;
+  min-width: clamp(30px, 6.5vw, 36px) !important;
+}
+.blackboard-gt-size-dot {
+  width: 32px !important;
+  height: 32px !important;
+  min-width: 32px !important;
 }
 
 .blackboard-global-toolbar-pill {
