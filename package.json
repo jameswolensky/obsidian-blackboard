@@ -1,6 +1,6 @@
 {
   "name": "obsidian-blackboard",
-  "version": "1.0.16",
+  "version": "1.0.17",
   "description": "Native stylus and Apple Pencil drawing for Obsidian, with live drawing in Canvas and Markdown embeds.",
   "main": "main.js",
   "scripts": {
