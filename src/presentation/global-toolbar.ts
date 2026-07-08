@@ -473,7 +473,7 @@ export class GlobalToolbar {
       // highlighter) and highlight the dot matching the active size — sync() only runs on
       // selection otherwise.
       if (which === 'size') this.rebuildSizeDots();
-      this.positionPopover(target);
+      this.positionPopover(target, which === 'color' ? this.colorWell : this.sizeBtn);
     }
   }
 
@@ -482,14 +482,23 @@ export class GlobalToolbar {
     this.sizePopover.setCssStyles({ display: 'none' });
   }
 
-  private positionPopover(p: HTMLElement): void {
-    // position:fixed in viewport coords; anchored above the toolbar and clamped
-    // horizontally within the active view so it doesn't overflow sidebars.
-    const r = this.root.getBoundingClientRect();
+  /** position:fixed in viewport coords; centred over the button that opened it and sitting
+   * just above the toolbar. Clamped within the active view when it's laid out, else the
+   * visible viewport — so a not-yet-laid-out (cold-start) anchor can't slam it to the left
+   * edge. */
+  private positionPopover(p: HTMLElement, anchor: HTMLElement): void {
+    const tr = this.root.getBoundingClientRect();
+    const ar = anchor.getBoundingClientRect();
     const a = this.anchorRect();
-    const left = Math.min(Math.max(a.left + 8, r.left), a.right - p.offsetWidth - 8);
-    p.style.left = `${Math.max(8, left)}px`;
-    p.style.top = `${Math.max(8, r.top - p.offsetHeight - 8)}px`;
+    const vv = window.visualViewport;
+    const laidOut = a.width > 1 && a.height > 1;
+    const minLeft = (laidOut ? a.left : (vv ? vv.offsetLeft : 0)) + 8;
+    const maxRight = (laidOut ? a.right : (vv ? vv.offsetLeft + vv.width : window.innerWidth)) - 8;
+    // Centre over the button, then clamp so the popover stays fully on-screen.
+    let left = ar.left + ar.width / 2 - p.offsetWidth / 2;
+    left = Math.min(Math.max(minLeft, left), Math.max(minLeft, maxRight - p.offsetWidth));
+    p.style.left = `${left}px`;
+    p.style.top = `${Math.max(8, tr.top - p.offsetHeight - 8)}px`;
   }
 
   private setCollapsed(c: boolean): void {
