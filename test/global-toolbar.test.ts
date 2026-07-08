@@ -730,6 +730,33 @@ describe('GlobalToolbar — stays clear of the native Canvas card menu', () => {
     // The toolbar's bottom edge must sit at or above the card menu's top (500).
     expect(top + height).toBeLessThanOrEqual(500);
   });
+
+  it('sits above the card menu even before the view lays out (cold-start viewport fallback)', () => {
+    // View rect is left un-stubbed (zero) so the toolbar uses the cold-start viewport
+    // fallback — which must STILL clamp above the native canvas card menu, not overlap it.
+    const view = document.createElement('div');
+    view.className = 'view-content';
+    const cardMenu = document.createElement('div');
+    cardMenu.className = 'canvas-card-menu';
+    stubRect(cardMenu, { top: 500, bottom: 544, left: 100, right: 300 });
+    view.appendChild(cardMenu);
+    const surfaceEl = document.createElement('div');
+    view.appendChild(surfaceEl);
+    document.body.appendChild(view);
+
+    const host = document.createElement('div');
+    document.body.appendChild(host);
+    const mgr = new SurfaceManager();
+    tb = new GlobalToolbar(host, mgr);
+    const surface = mockSurface();
+    mgr.register(surface, surfaceEl);
+    mgr.setActive(surface);
+
+    const root = host.querySelector('.blackboard-global-toolbar') as HTMLElement;
+    const top = parseFloat(root.style.top);
+    const height = root.offsetHeight || 48;
+    expect(top + height).toBeLessThanOrEqual(500);
+  });
 });
 
 describe('GlobalToolbar — visual feedback', () => {

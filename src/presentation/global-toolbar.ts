@@ -337,6 +337,18 @@ export class GlobalToolbar {
     return (this.anchorEl ?? this.host).getBoundingClientRect();
   }
 
+  /** Sit above Obsidian's native Canvas card menu (bottom-centred, visible on `.is-tablet`)
+   * so our toolbar never covers it — the agreed iPad behaviour. Applied to BOTH the view
+   * bounds and the cold-start viewport fallback so it holds in every state. */
+  private clampAboveCardMenu(bottom: number): number {
+    const cardMenu = this.anchorEl?.querySelector('.canvas-card-menu') as HTMLElement | null;
+    if (cardMenu) {
+      const cm = cardMenu.getBoundingClientRect();
+      if (cm.height > 0 && cm.top < bottom) return cm.top - 8;
+    }
+    return bottom;
+  }
+
   /** Usable region: the active view's rect, intersected with the visible viewport
    * (minus the bottom safe-area inset) and inset by a 12px margin. */
   private bounds(): { left: number; right: number; top: number; bottom: number } {
@@ -346,19 +358,12 @@ export class GlobalToolbar {
     // fall back to the layout viewport when visualViewport is unavailable.
     const vv = window.visualViewport;
     const visibleBottom = vv ? vv.offsetTop + vv.height : window.innerHeight;
-    let bottom = Math.min(r.bottom, visibleBottom - this.safeBottom) - 12;
-    // Keep clear of Obsidian's native Canvas card menu (also bottom-centred), on any
-    // device/size, by sitting above it whenever it is present and visible.
-    const cardMenu = this.anchorEl?.querySelector('.canvas-card-menu') as HTMLElement | null;
-    if (cardMenu) {
-      const cm = cardMenu.getBoundingClientRect();
-      if (cm.height > 0 && cm.top < bottom) bottom = cm.top - 8;
-    }
+    const bottom = Math.min(r.bottom, visibleBottom - this.safeBottom) - 12;
     return {
       left: r.left + 12,
       right: r.right - 12,
       top: Math.max(r.top, 0) + 12,
-      bottom,
+      bottom: this.clampAboveCardMenu(bottom),
     };
   }
 
@@ -389,7 +394,8 @@ export class GlobalToolbar {
     const vw = vv ? vv.width : window.innerWidth;
     const vh = vv ? vv.offsetTop + vv.height : window.innerHeight;
     const vl = vv ? vv.offsetLeft : 0;
-    return { left: vl + 12, right: vl + vw - 12, top: 12, bottom: vh - this.safeBottom - 12 };
+    // Still sit above Obsidian's canvas card menu during cold start, not just once laid out.
+    return { left: vl + 12, right: vl + vw - 12, top: 12, bottom: this.clampAboveCardMenu(vh - this.safeBottom - 12) };
   }
 
   /** Toolbar: always bottom-centre of the active view (viewport fallback on cold start). */
