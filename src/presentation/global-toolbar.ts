@@ -373,10 +373,9 @@ export class GlobalToolbar {
     else this.placeToolbar();
   }
 
-  /** On a cold start (app reopen) the anchor view isn't laid out yet, so its rect is
-   * empty — positioning off that would pin the toolbar to the top-left corner. Skip and
-   * retry on the next frame until the view has real geometry. Bounded so a genuinely
-   * zero-size host can't loop forever; the resize/layout-change handlers catch it after. */
+  /** True when the anchor view has no real layout rect yet (cold start / app reopen).
+   * We still position (see placeToolbar) so the toolbar is never invisible; we just also
+   * schedule a retry so it snaps from the viewport fallback to the view once it lays out. */
   private notLaidOut(): boolean {
     const r = this.anchorRect();
     if (r.width > 1 && r.height > 1) { this.layoutTries = 0; return false; }
@@ -384,10 +383,21 @@ export class GlobalToolbar {
     return true;
   }
 
-  /** Toolbar: always bottom-centre of the active view. */
+  /** Region to position against: the active view's usable bounds, or — before the view
+   * has laid out (cold start) — the visible viewport, so the toolbar is ALWAYS visible at
+   * bottom-centre instead of vanishing or jumping to the top-left corner. */
+  private placementBounds(): { left: number; right: number; top: number; bottom: number } {
+    if (!this.notLaidOut()) return this.bounds();
+    const vv = window.visualViewport;
+    const vw = vv ? vv.width : window.innerWidth;
+    const vh = vv ? vv.offsetTop + vv.height : window.innerHeight;
+    const vl = vv ? vv.offsetLeft : 0;
+    return { left: vl + 12, right: vl + vw - 12, top: 12, bottom: vh - this.safeBottom - 12 };
+  }
+
+  /** Toolbar: always bottom-centre of the active view (viewport fallback on cold start). */
   private placeToolbar(): void {
-    if (this.notLaidOut()) return;
-    const b = this.bounds();
+    const b = this.placementBounds();
     this.root.style.maxWidth = `${Math.max(120, b.right - b.left)}px`;
     const w = this.root.offsetWidth || 220;
     const h = this.root.offsetHeight || 48;
@@ -395,10 +405,9 @@ export class GlobalToolbar {
     this.root.style.top = `${Math.max(b.top, b.bottom - h)}px`;
   }
 
-  /** Pill: always pinned to the right edge, vertically centred. */
+  /** Pill: always pinned to the right edge, vertically centred (viewport fallback). */
   private placePill(): void {
-    if (this.notLaidOut()) return;
-    const b = this.bounds();
+    const b = this.placementBounds();
     const s = this.pill.offsetWidth || 56;
     this.pill.style.left = `${Math.max(b.left, b.right - s)}px`;
     this.pill.style.top = `${Math.max(b.top, Math.round((b.top + b.bottom) / 2 - s / 2))}px`;
