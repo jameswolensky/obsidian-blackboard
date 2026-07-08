@@ -1,4 +1,4 @@
-import { defineConfig } from "vitest/config";
+import { defineConfig, configDefaults } from "vitest/config";
 import path from "path";
 
 export default defineConfig({
@@ -11,5 +11,7 @@ export default defineConfig({
     globals: true,
     environment: "jsdom",
     setupFiles: ["test/setup.ts"],
+    // Never pick up test copies inside git worktrees (parallel sessions) — they double-count.
+    exclude: [...configDefaults.exclude, "**/.worktrees/**"],
   },
 });

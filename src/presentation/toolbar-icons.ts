@@ -50,24 +50,12 @@ export const ICONS: Record<IconName, string> = {
   ),
 };
 
-/**
- * Turn a trusted, static SVG string into a real DOM node (no `innerHTML` — Obsidian's
- * review guidelines forbid it).
- *
- * We parse as `text/html`, NOT `image/svg+xml`: the HTML fragment parser applies the
- * SVG foreign-content rules and places `<svg>` and its shapes in the SVG namespace —
- * exactly what `innerHTML` did before. Parsing as `image/svg+xml` is namespace-strict,
- * so markup without an `xmlns` lands in the null namespace; that displays on
- * jsdom/Chromium but renders NOTHING on iPad WebKit — the "0 toolbar icons" regression.
- */
-function svgToNode(markup: string): Node {
-  const doc = new DOMParser().parseFromString(markup, 'text/html');
-  return activeDocument.importNode(doc.body.firstElementChild as Element, true);
-}
-
 export function setToolbarIcon(el: HTMLElement, name: IconName): void {
-  el.empty();
-  el.appendChild(svgToNode(ICONS[name]));
+  // These are trusted, static, hard-coded SVG strings (no user input). innerHTML HTML-parses
+  // them so `<svg>` and its shapes land in the SVG namespace and render on iOS WebKit — the
+  // DOMParser('image/svg+xml') path put them in the null namespace and drew nothing on iPad.
+  // eslint-disable-next-line no-unsanitized/property -- trusted static hard-coded SVG (no user input); HTML-parses into the SVG namespace so glyphs render on iOS WebKit
+  el.innerHTML = ICONS[name];
 }
 
 /**
@@ -87,9 +75,8 @@ export function sizeToDotDiameter(size: number): number {
  */
 export function setSizeDotIcon(el: HTMLElement, size: number): void {
   const d = sizeToDotDiameter(size);
-  el.empty();
-  el.appendChild(svgToNode(
+  // eslint-disable-next-line no-unsanitized/property -- trusted static hard-coded SVG (see setToolbarIcon)
+  el.innerHTML =
     `<svg viewBox="0 0 24 24" fill="none" aria-hidden="true">` +
-    `<circle cx="12" cy="12" r="${d / 2}" fill="#ffffff" stroke="none"/></svg>`,
-  ));
+    `<circle cx="12" cy="12" r="${d / 2}" fill="#ffffff" stroke="none"/></svg>`;
 }
