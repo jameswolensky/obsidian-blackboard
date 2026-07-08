@@ -106,6 +106,28 @@ describe('DocumentStore', () => {
     expect(onChange).not.toHaveBeenCalled();
   });
 
+  it('a delayed modify echo of an EARLIER self-save does not revert newer strokes (auto-delete race)', async () => {
+    // Repro: the vault `modify` handler is async, so an echo of an earlier save can land AFTER
+    // a newer commit. A single-slot "last written" guard mis-read that stale echo as a foreign
+    // edit and reverted, silently deleting strokes drawn in between.
+    const repo = mockRepo(file([stroke('a')]));
+    const h = await store.acquire('Draw.blackboard', repo);
+
+    // Draw b, and let its debounced save actually reach disk (this is the content that will echo).
+    h.commit(file([stroke('a'), stroke('b')]));
+    await new Promise((r) => setTimeout(r, 1)); // save timer fires -> repo.save([a,b])
+    const echoOfEarlierSave = serialize(file([stroke('a'), stroke('b')]));
+
+    // Keep drawing: commit c BEFORE the [a,b] modify event is delivered.
+    h.commit(file([stroke('a'), stroke('b'), stroke('c')]));
+
+    // The delayed vault `modify` for the [a,b] save finally arrives.
+    store.reconcile('Draw.blackboard', echoOfEarlierSave);
+
+    // c must survive — the echo was our own earlier write, not an external edit.
+    expect(h.getStrokes().map((s) => s.id)).toEqual(['a', 'b', 'c']);
+  });
+
   it('releasing the last handle drops the entry so the next acquire reloads from disk', async () => {
     const repo = mockRepo(file([stroke('a')]));
     const h1 = await store.acquire('Draw.blackboard', repo);

@@ -24,11 +24,21 @@ interface Entry {
   file: BlackboardFile;
   subscribers: Map<symbol, () => void>;
   refCount: number;
-  /** Serialized form of our most recent write — the origin guard for reconcile(). */
-  lastWrittenContent: string;
+  /**
+   * Serialized forms we've written to disk (or accepted as an external edit) that are still
+   * echoing back through the vault `modify` event. The `modify` handler is async, so an echo
+   * of an EARLIER save can arrive AFTER a newer commit has advanced the document — a single
+   * "last written" slot mis-reads that stale echo as a foreign edit and reverts, silently
+   * deleting the strokes drawn in between. Remembering every recent self-write closes that race.
+   */
+  seen: Set<string>;
   saveTimer: ReturnType<typeof setTimeout> | null;
   repo: IDrawingRepository;
 }
+
+/** How many recent self-writes to remember. Far above any realistic number of in-flight
+ * disk writes, so a delayed echo is always still recognized, while the set stays bounded. */
+const SEEN_LIMIT = 32;
 
 /**
  * Single source of truth for `.blackboard` stroke data, keyed by file path. Every mounted
@@ -53,7 +63,7 @@ export class DocumentStore {
         file,
         subscribers: new Map(),
         refCount: 0,
-        lastWrittenContent: serialize(file),
+        seen: new Set(),
         saveTimer: null,
         repo,
       };
@@ -75,10 +85,11 @@ export class DocumentStore {
   reconcile(path: string, diskContent: string): void {
     const entry = this.entries.get(path);
     if (!entry) return;
-    if (diskContent === entry.lastWrittenContent) return; // our own save echoing back — ignore
+    if (diskContent === serialize(entry.file)) return; // already our canonical state — nothing to do
+    if (entry.seen.has(diskContent)) return; // a (possibly delayed) echo of one of our own writes
     const { file } = deserialize(diskContent);
     entry.file = file;
-    entry.lastWrittenContent = diskContent;
+    this.remember(entry, diskContent); // remember accepted bytes so duplicate echoes are ignored too
     for (const cb of entry.subscribers.values()) cb(); // genuine external edit: refresh everyone
   }
 
@@ -86,11 +97,20 @@ export class DocumentStore {
     const entry = this.entries.get(path);
     if (!entry) return;
     entry.file = file;
-    entry.lastWrittenContent = serialize(file);
     for (const [id, cb] of entry.subscribers) {
       if (id !== originId) cb(); // refresh siblings, never the committer
     }
     this.scheduleSave(path);
+  }
+
+  /** Record a serialized content as one of ours, evicting the oldest to stay bounded. */
+  private remember(entry: Entry, content: string): void {
+    entry.seen.add(content);
+    while (entry.seen.size > SEEN_LIMIT) {
+      const oldest = entry.seen.values().next().value;
+      if (oldest === undefined) break;
+      entry.seen.delete(oldest);
+    }
   }
 
   private scheduleSave(path: string): void {
@@ -99,6 +119,9 @@ export class DocumentStore {
     if (entry.saveTimer !== null) window.clearTimeout(entry.saveTimer);
     entry.saveTimer = window.setTimeout(() => {
       entry.saveTimer = null;
+      // Remember exactly what we're about to write BEFORE its `modify` echo can arrive, so a
+      // later reconcile recognizes it as our own even after newer commits move the document on.
+      this.remember(entry, serialize(entry.file));
       void entry.repo.save(path, entry.file);
     }, this.saveDelayMs);
   }
@@ -113,6 +136,7 @@ export class DocumentStore {
       if (entry.saveTimer !== null) {
         window.clearTimeout(entry.saveTimer);
         entry.saveTimer = null;
+        this.remember(entry, serialize(entry.file));
         void entry.repo.save(path, entry.file);
       }
       this.entries.delete(path);
