@@ -43,7 +43,7 @@ export class DrawingEngine {
     this.drawingWidth = width ?? (container.clientWidth || 800);
     this.drawingHeight = height ?? (container.clientHeight || 600);
 
-    this.staticCanvas = document.createElement('canvas');
+    this.staticCanvas = createEl('canvas');
     this.staticCanvas.className = 'blackboard-static';
     this.staticCanvas.style.position = 'absolute';
     this.staticCanvas.style.top = '0';
@@ -51,7 +51,7 @@ export class DrawingEngine {
     this.staticCanvas.style.width = '100%';
     this.staticCanvas.style.height = '100%';
 
-    this.activeCanvas = document.createElement('canvas');
+    this.activeCanvas = createEl('canvas');
     this.activeCanvas.className = 'blackboard-active';
     this.activeCanvas.style.position = 'absolute';
     this.activeCanvas.style.top = '0';
@@ -133,7 +133,7 @@ export class DrawingEngine {
 
   requestRender(): void {
     if (this.rafId !== 0) return;
-    this.rafId = requestAnimationFrame(() => this.render());
+    this.rafId = window.requestAnimationFrame(() => this.render());
   }
 
   exportThumbnail(): Promise<Blob | null> {
@@ -144,7 +144,7 @@ export class DrawingEngine {
         return;
       }
 
-      const thumbCanvas = document.createElement('canvas');
+      const thumbCanvas = createEl('canvas');
       const maxSize = 256;
       const scale = Math.min(maxSize / bounds.width, maxSize / bounds.height);
       thumbCanvas.width = Math.ceil(bounds.width * scale);
@@ -366,7 +366,7 @@ export class DrawingEngine {
 
   destroy(): void {
     if (this.rafId !== 0) {
-      cancelAnimationFrame(this.rafId);
+      window.cancelAnimationFrame(this.rafId);
       this.rafId = 0;
     }
     this.staticCanvas.remove();

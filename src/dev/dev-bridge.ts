@@ -111,7 +111,7 @@ export function startDevBridge(plugin: Plugin): void {
   let swapping = false;
 
   const audit = async (): Promise<void> => {
-    const payload = collectAudit(document, {
+    const payload = collectAudit(activeDocument, {
       pluginVersion: manifestVersion,
       buildHash: knownVersion,
     });

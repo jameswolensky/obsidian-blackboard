@@ -89,10 +89,10 @@ export class GlobalToolbar {
   /** Read env(safe-area-inset-bottom) via a probe so the palette clears the
    * iPad home indicator. Zero on desktop. */
   private measureSafeBottom(): void {
-    const probe = document.createElement('div');
+    const probe = createDiv();
     probe.style.cssText =
       'position:fixed;left:0;bottom:0;width:0;height:env(safe-area-inset-bottom);visibility:hidden;pointer-events:none;';
-    document.body.appendChild(probe);
+    activeDocument.body.appendChild(probe);
     this.safeBottom = probe.getBoundingClientRect().height || 0;
     probe.remove();
   }
@@ -129,7 +129,7 @@ export class GlobalToolbar {
     }
     this.root.appendChild(this.separator());
 
-    this.colorWell = document.createElement('button');
+    this.colorWell = createEl('button');
     // Spectrum-only: the conic rainbow fills the whole well, with no center-color dot.
     this.colorWell.className = 'blackboard-gt-swatch blackboard-gt-colorwell';
     this.colorWell.setAttribute('aria-label', 'Color');
@@ -189,7 +189,7 @@ export class GlobalToolbar {
     const swatches = this.colorPopover.createDiv({ cls: 'blackboard-gt-swatches' });
     // The eight swatches are pure shortcuts sourced from settings.paletteColors, in order.
     for (const color of this.paletteColors) {
-      const sw = document.createElement('button');
+      const sw = createEl('button');
       sw.className = 'blackboard-gt-swatch';
       sw.style.backgroundColor = color;
       sw.addEventListener('pointerup', (e) => { e.stopPropagation(); this.pickColor(color); });
@@ -241,7 +241,7 @@ export class GlobalToolbar {
     const min = sizes[0];
     const max = sizes[sizes.length - 1];
     for (const size of sizes) {
-      const dot = document.createElement('button');
+      const dot = createEl('button');
       dot.className = 'blackboard-gt-size-dot';
       dot.dataset.size = String(size);
       const inner = dot.createDiv({ cls: 'blackboard-gt-size-dot-inner' });
@@ -485,7 +485,7 @@ export class GlobalToolbar {
   }
 
   private iconButton(icon: IconName, label: string): HTMLButtonElement {
-    const btn = document.createElement('button');
+    const btn = createEl('button');
     btn.className = 'blackboard-gt-btn';
     btn.setAttribute('aria-label', label);
     setToolbarIcon(btn, icon);
@@ -493,7 +493,7 @@ export class GlobalToolbar {
   }
 
   private separator(): HTMLElement {
-    const s = document.createElement('div');
+    const s = createDiv();
     s.className = 'blackboard-gt-sep';
     return s;
   }

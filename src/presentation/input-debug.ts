@@ -78,7 +78,7 @@ export function inputDebugLog(text: string): void {
 export function toggleInputDebug(): boolean {
   if (enabled) {
     if (listener) {
-      for (const type of EVENTS) document.removeEventListener(type, listener, true);
+      for (const type of EVENTS) activeDocument.removeEventListener(type, listener, true);
     }
     listener = null;
     overlay?.remove();
@@ -89,7 +89,7 @@ export function toggleInputDebug(): boolean {
   }
 
   entries = [];
-  overlay = document.createElement('div');
+  overlay = createDiv();
   overlay.className = 'blackboard-input-debug';
   Object.assign(overlay.style, {
     position: 'fixed', top: '0', left: '0', zIndex: '99999',
@@ -101,10 +101,10 @@ export function toggleInputDebug(): boolean {
     borderBottomRightRadius: '6px',
   } as Partial<CSSStyleDeclaration>);
   overlay.textContent = 'blackboard input debug: waiting for events…';
-  document.body.appendChild(overlay);
+  activeDocument.body.appendChild(overlay);
 
   listener = onEvent;
-  for (const type of EVENTS) document.addEventListener(type, listener, true);
+  for (const type of EVENTS) activeDocument.addEventListener(type, listener, true);
   enabled = true;
   return true;
 }

@@ -65,9 +65,9 @@ export async function embedDrawingIntoHost(
         size: { width: 400, height: 300 },
         file,
       });
-      setTimeout(() => patchCanvasFileNodes(repo, app, settings, surfaceManager, toolManager, store), 200);
-      setTimeout(() => patchCanvasFileNodes(repo, app, settings, surfaceManager, toolManager, store), 500);
-      setTimeout(() => patchCanvasFileNodes(repo, app, settings, surfaceManager, toolManager, store), 1000);
+      window.setTimeout(() => patchCanvasFileNodes(repo, app, settings, surfaceManager, toolManager, store), 200);
+      window.setTimeout(() => patchCanvasFileNodes(repo, app, settings, surfaceManager, toolManager, store), 500);
+      window.setTimeout(() => patchCanvasFileNodes(repo, app, settings, surfaceManager, toolManager, store), 1000);
     }
     return;
   }
@@ -152,7 +152,7 @@ export function patchCanvas(app: App, plugin: Plugin, settings: PluginSettings, 
     const menuEl = view.canvas.cardMenuEl as HTMLElement;
     if (menuEl.querySelector('#blackboard-add-drawing')) return;
 
-    const btn = document.createElement('div');
+    const btn = createDiv();
     btn.id = 'blackboard-add-drawing';
     btn.classList.add('canvas-card-menu-button');
     setIcon(btn, 'pencil');
@@ -164,7 +164,7 @@ export function patchCanvas(app: App, plugin: Plugin, settings: PluginSettings, 
   }));
 
   plugin.registerEvent(app.workspace.on('active-leaf-change', () => {
-    setTimeout(() => patchCanvasFileNodes(repo, app, settings, surfaceManager, toolManager, store), 200);
+    window.setTimeout(() => patchCanvasFileNodes(repo, app, settings, surfaceManager, toolManager, store), 200);
   }));
 
   const observer = new MutationObserver(() => patchCanvasFileNodes(repo, app, settings, surfaceManager, toolManager, store));
@@ -181,5 +181,5 @@ export function patchCanvas(app: App, plugin: Plugin, settings: PluginSettings, 
   }));
   plugin.register(() => observer.disconnect());
 
-  setTimeout(() => patchCanvasFileNodes(repo, app, settings, surfaceManager, toolManager, store), 500);
+  window.setTimeout(() => patchCanvasFileNodes(repo, app, settings, surfaceManager, toolManager, store), 500);
 }

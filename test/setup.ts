@@ -50,3 +50,20 @@ if (typeof globalThis.URL.createObjectURL !== 'function') {
 if (typeof globalThis.URL.revokeObjectURL !== 'function') {
   globalThis.URL.revokeObjectURL = vi.fn();
 }
+
+// Obsidian runtime globals (obsidian.d.ts declares them; the app provides them).
+// activeDocument/activeWindow alias the focused window — in jsdom that's the one window.
+(globalThis as any).activeDocument = document;
+(globalThis as any).activeWindow = window;
+if (typeof (globalThis as any).createEl !== 'function') {
+  (globalThis as any).createEl = (tag: string, o?: { cls?: string; text?: string }) => {
+    const el = document.createElement(tag);
+    if (o?.cls) el.className = o.cls;
+    if (o?.text) el.textContent = o.text;
+    return el;
+  };
+}
+if (typeof (globalThis as any).createDiv !== 'function') {
+  (globalThis as any).createDiv = (o?: { cls?: string; text?: string }) =>
+    (globalThis as any).createEl('div', o);
+}
