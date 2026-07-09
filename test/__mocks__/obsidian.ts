@@ -25,6 +25,11 @@ export class MarkdownView {
     replaceRange: vi.fn(),
   };
 }
+export class View {
+  containerEl: HTMLElement = document.createElement('div');
+  contentEl: HTMLElement = document.createElement('div');
+  getViewType(): string { return ''; }
+}
 export class TextFileView {
   file: TFile | null = null;
   contentEl: HTMLElement = document.createElement('div');

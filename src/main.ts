@@ -1,4 +1,4 @@
-import { Plugin, TFile } from 'obsidian';
+import { Plugin, TFile, View } from 'obsidian';
 import type { PluginSettings } from './domain/entities';
 import { DEFAULT_PLUGIN_SETTINGS, DEFAULT_TOOL_STATE, validateSettings } from './domain/entities';
 import type { IDrawingRepository } from './domain/ports';
@@ -205,8 +205,9 @@ export default class BlackboardPlugin extends Plugin {
   }
 
   private routeToolbar(): void {
-    const view = this.app.workspace.activeLeaf?.view as
+    const view = this.app.workspace.getActiveViewOfType(View) as unknown as
       | { contentEl?: HTMLElement; getViewType?: () => string }
+      | null
       | undefined;
     const contentEl = view?.contentEl ?? null;
     // Persistent pill: on Markdown/Canvas views the toolbar shows a collapsed pill even with no

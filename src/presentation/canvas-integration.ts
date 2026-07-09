@@ -1,4 +1,4 @@
-import { App, Plugin, TFile, FuzzySuggestModal, Notice, setIcon, setTooltip, MarkdownView } from 'obsidian';
+import { App, Plugin, TFile, FuzzySuggestModal, Notice, setIcon, setTooltip, MarkdownView, View } from 'obsidian';
 import type { PluginSettings } from '../domain/entities';
 import type { IDrawingRepository } from '../domain/ports';
 import { CreateDrawingUseCase } from '../application/use-cases/create-drawing';
@@ -14,7 +14,7 @@ import type { DocumentStore } from '../application/document-store';
  * (no-op) instead of creating a stray file and navigating away.
  */
 function isBlackboardViewActive(app: App): boolean {
-  return app.workspace?.activeLeaf?.view?.getViewType?.() === VIEW_TYPE;
+  return app.workspace?.getActiveViewOfType(View)?.getViewType?.() === VIEW_TYPE;
 }
 
 /**
