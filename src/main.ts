@@ -156,6 +156,11 @@ export default class BlackboardPlugin extends Plugin {
       el.dataset.bbMounted = 'false';
       el.empty();
     }
+    // Same heal for the retired card-menu pencil button (removed by design 2026-07-09):
+    // older instances injected it into canvas menus that survive plugin reloads.
+    for (const el of Array.from(activeDocument.querySelectorAll('#blackboard-add-drawing'))) {
+      el.remove();
+    }
 
     // Unmount every live embed when the plugin unloads (reload/update/disable):
     // leaves the DOM re-mountable for the next instance and removes doc listeners.

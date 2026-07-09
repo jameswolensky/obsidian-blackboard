@@ -126,6 +126,16 @@ describe('BlackboardPlugin', () => {
       stale.remove();
     });
 
+    it('removes a stale card-menu pencil button at startup', async () => {
+      const btn = document.body.createDiv();
+      btn.id = 'blackboard-add-drawing';
+      const plugin = createPlugin();
+
+      await plugin.onload();
+
+      expect(document.querySelector('#blackboard-add-drawing')).toBeNull();
+    });
+
     it('registers view, extensions, commands, and settings tab', async () => {
       const plugin = createPlugin();
 
