@@ -133,7 +133,12 @@
   height: clamp(20px, 4.6vw, 24px);
 }
 .blackboard-global-toolbar .blackboard-gt-btn:hover { background: var(--background-modifier-hover); }
-.blackboard-global-toolbar .blackboard-gt-btn.active { color: var(--text-on-accent); background: var(--interactive-accent); }
+/* The SELECTED tool reads as a circular accent chip; unselected buttons stay flat. */
+.blackboard-global-toolbar .blackboard-gt-btn.active {
+  color: var(--text-on-accent);
+  background: var(--interactive-accent);
+  border-radius: 50%;
+}
 .blackboard-global-toolbar .blackboard-gt-btn:disabled { opacity: 0.4; cursor: default; }
 
 .blackboard-global-toolbar .blackboard-gt-sep {

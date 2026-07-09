@@ -207,8 +207,7 @@ export class GlobalToolbar {
         ],
       });
       this.picker.on('color:change', (c: { hexString: string }) => {
-        // Arbitrary wheel colors set the active tool color but never rewrite paletteColors.
-        this.surface?.setColor(c.hexString);
+        this.handleWheelColor(c.hexString);
       });
     } catch {
       this.picker = null;
@@ -411,8 +410,18 @@ export class GlobalToolbar {
     if (highlighter) highlighter.style.color = this.surface.highlighterColor;
   }
 
+  /** Wheel path: arbitrary colors set the active tool color but never rewrite
+   * paletteColors. Re-tint immediately — the glyph must not wait for the next
+   * sync() (tool switch), which is the 1.0.4 stale-tint regression. */
+  private handleWheelColor(hex: string): void {
+    this.surface?.setColor(hex);
+    this.updateToolTints();
+  }
+
   private pickColor(color: string): void {
     this.surface?.setColor(color);
+    // Re-tint immediately (1.0.4 fix): color changes don't run sync().
+    this.updateToolTints();
     if (this.picker) { try { this.picker.color.hexString = color; } catch { /* ignore */ } }
     // Selecting a preset swatch is a committed choice — close the popover.
     this.closePopovers();

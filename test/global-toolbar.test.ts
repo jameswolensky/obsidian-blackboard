@@ -930,3 +930,57 @@ describe('GlobalToolbar — QA4: highlighter has its own wider size scale', () =
     expect(surface.activeSize).toBe(44);
   });
 });
+
+describe('colour change repaints the tool glyph immediately (1.0.4 regression, re-fixed)', () => {
+  // Repro from device audit: picking a colour recolours strokes but the toolbar glyph
+  // keeps the old tint until an unrelated event (tool switch) re-runs sync().
+  let tb: GlobalToolbar;
+  afterEach(() => tb?.destroy());
+  function setup() {
+    const host = document.createElement('div');
+    document.body.appendChild(host);
+    const mgr = new SurfaceManager();
+    const tm = new ToolManager({ ...DEFAULT_TOOL_STATE, penColor: '#ffffff', highlighterColor: '#ffff00' });
+    const surface = sharedSurface(tm);
+    tb = new GlobalToolbar(host, mgr);
+    mgr.register(surface, document.createElement('div'));
+    mgr.setActive(surface);
+    return { host, surface };
+  }
+  const probeColor = (c: string) => {
+    const p = document.createElement('div');
+    p.style.color = c;
+    return p.style.color;
+  };
+
+  it('pen glyph re-tints the moment a swatch colour is picked', () => {
+    const { host } = setup();
+    const pen = host.querySelector('[data-tool="pen"]') as HTMLElement;
+
+    (tb as any).pickColor('#ff0000');
+
+    expect(pen.style.color).toBe(probeColor('#ff0000'));
+  });
+
+  it('highlighter glyph re-tints the moment its colour is picked', () => {
+    const { host } = setup();
+    pointerup(host.querySelector('[data-tool="highlighter"]'));
+
+    (tb as any).pickColor('#00ff00');
+
+    const hl = host.querySelector('[data-tool="highlighter"]') as HTMLElement;
+    expect(hl.style.color).toBe(probeColor('#00ff00'));
+  });
+
+  it('wheel colour changes re-tint too (same path as the iro color:change handler)', () => {
+    const { host } = setup();
+    const pen = host.querySelector('[data-tool="pen"]') as HTMLElement;
+    const picker = (tb as any).picker;
+    if (picker) {
+      picker.color.hexString = '#123456';
+    } else {
+      (tb as any).handleWheelColor('#123456');
+    }
+    expect(pen.style.color).toBe(probeColor('#123456'));
+  });
+});

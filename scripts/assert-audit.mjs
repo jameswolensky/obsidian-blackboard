@@ -16,7 +16,13 @@ const ok = (cond, msg) => {
 const px = (s) => Number.parseFloat(s ?? "NaN");
 
 ok(audit.toolbarPresent || audit.pillPresent, "neither toolbar nor pill present");
-if (audit.toolbarPresent) {
+const toolbarHidden = audit.toolbarPresent && audit.toolbarRect.width === 0;
+if (toolbarHidden) {
+  failures.push(
+    "toolbar mounted but hidden (pill/no-surface state) — activate a drawing on the device and re-audit for geometry",
+  );
+}
+if (audit.toolbarPresent && !toolbarHidden) {
   const bar = audit.toolbarRect;
   ok(bar.y + bar.height <= audit.viewport.h, `toolbar below viewport: ${JSON.stringify(bar)}`);
   ok(bar.x >= 0 && bar.x + bar.width <= audit.viewport.w, "toolbar clipped horizontally");
@@ -39,15 +45,21 @@ if (audit.toolbarPresent) {
           Math.abs(c.rect.width - 42) <= 1 && Math.abs(c.rect.height - 42) <= 1,
           `${name}: not 42x42 (${c.rect.width}x${c.rect.height})`,
         );
-      ok(
-        !c.style.borderRadius.includes("50%") && px(c.style.borderRadius) < 16,
-        `${name}: tool button not flat (${c.style.borderRadius})`,
-      );
-      if (c.active)
+      if (c.active) {
+        ok(
+          c.style.borderRadius.includes("50%") || px(c.style.borderRadius) >= c.rect.width / 2 - 1,
+          `${name}: active chip not circular (${c.style.borderRadius})`,
+        );
         ok(
           c.style.backgroundColor === "rgb(138, 92, 245)",
           `${name}: active accent wrong (${c.style.backgroundColor})`,
         );
+      } else {
+        ok(
+          !c.style.borderRadius.includes("50%") && px(c.style.borderRadius) < 16,
+          `${name}: tool button not flat (${c.style.borderRadius})`,
+        );
+      }
     }
     if (c.classes.includes("blackboard-gt-colorwell"))
       ok(
