@@ -7,7 +7,7 @@ import type { ToolManager } from '../domain/tool-manager';
 import type { IDrawingRepository } from '../domain/ports';
 import type { DocumentStore, SharedDocumentHandle } from '../application/document-store';
 import { eraseAtPoint } from '../application/eraser-service';
-import { inputDebugEnabled, inputDebugLog } from './input-debug';
+import { inputDebugEnabled, inputDebugLog } from '../dev/input-debug';
 import type { SurfaceManager } from './surface-manager';
 import { engineSurface, type DrawingSurface } from './drawing-surface';
 
@@ -446,7 +446,7 @@ export class BlackboardView extends TextFileView {
     const onDocPointerDown = (e: PointerEvent) => {
       const inside = isInsideDrawing(e);
       const drawInput = isDrawingInput(e);
-      if (inputDebugEnabled()) {
+      if (__DEV_BUILD__ && inputDebugEnabled()) {
         inputDebugLog(`DOWN ${e.pointerType} in=${inside ? 'Y' : 'N'} draw=${drawInput ? 'Y' : 'N'} tgt=${dbgTarget(e.target)}${inside && drawInput ? ' OK' : ' REJECT'}`);
       }
       if (!inside) return;
@@ -565,7 +565,7 @@ export class BlackboardView extends TextFileView {
       // Re-sync the toolbar (undo/redo enablement) the instant a stroke or erase commits,
       // so the undo arrow lights up immediately rather than on the next tap (QA3).
       this.surfaceManager?.notifyStrokeEnd();
-      if (inputDebugEnabled()) inputDebugLog(`UP committed total=${engine.strokeManager.strokes.length}`);
+      if (__DEV_BUILD__ && inputDebugEnabled()) inputDebugLog(`UP committed total=${engine.strokeManager.strokes.length}`);
     };
 
     activeDocument.addEventListener('pointerdown', onDocPointerDown, true);

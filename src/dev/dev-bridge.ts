@@ -14,8 +14,6 @@
  */
 import { requestUrl, type Plugin } from 'obsidian';
 
-declare const __DEV_SERVER__: string;
-
 const AUDIT_STYLE_PROPS = [
   'width',
   'height',

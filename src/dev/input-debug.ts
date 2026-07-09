@@ -100,7 +100,7 @@ export function toggleInputDebug(): boolean {
     whiteSpace: 'pre', pointerEvents: 'none',
     borderBottomRightRadius: '6px',
   } as Partial<CSSStyleDeclaration>);
-  overlay.textContent = 'blackboard input debug: waiting for events…';
+  overlay.textContent = 'Blackboard input debug: waiting for events…';
   activeDocument.body.appendChild(overlay);
 
   listener = onEvent;

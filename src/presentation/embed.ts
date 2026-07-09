@@ -3,7 +3,7 @@ import type { BlackboardFile, PluginSettings, Stroke } from '../domain/entities'
 import { DrawingEngine } from '../infrastructure/canvas-renderer';
 import type { ToolManager } from '../domain/tool-manager';
 import { eraseAtPoint } from '../application/eraser-service';
-import { inputDebugEnabled, inputDebugLog } from './input-debug';
+import { inputDebugEnabled, inputDebugLog } from '../dev/input-debug';
 import type { SurfaceManager } from './surface-manager';
 import type { DocumentStore, SharedDocumentHandle } from '../application/document-store';
 import { engineSurface } from './drawing-surface';
@@ -229,7 +229,7 @@ export async function mountBlackboardEmbed(repo: IDrawingRepository, embedEl: HT
   const onDocPointerDown = (e: PointerEvent) => {
     const inside = isInsideDrawing(e);
     const drawInput = isDrawingInput(e);
-    if (inputDebugEnabled()) {
+    if (__DEV_BUILD__ && inputDebugEnabled()) {
       inputDebugLog(`DOWN ${e.pointerType} in=${inside ? 'Y' : 'N'} draw=${drawInput ? 'Y' : 'N'} tgt=${dbgTarget(e.target)}${inside && drawInput ? ' OK' : ' REJECT'}`);
     }
     if (!inside) return;
@@ -270,7 +270,7 @@ export async function mountBlackboardEmbed(repo: IDrawingRepository, embedEl: HT
     if (tool !== 'eraser') {
       engine.endStroke();
     }
-    if (inputDebugEnabled()) inputDebugLog(`UP committed total=${engine.strokeManager.strokes.length}`);
+    if (__DEV_BUILD__ && inputDebugEnabled()) inputDebugLog(`UP committed total=${engine.strokeManager.strokes.length}`);
     // Tell the toolbar a stroke just committed so it re-syncs undo/redo enablement now,
     // instead of leaving the undo arrow greyed out until the next tap (QA3).
     surfaceManager?.notifyStrokeEnd();
