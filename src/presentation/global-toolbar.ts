@@ -268,7 +268,7 @@ export class GlobalToolbar {
     this.surface = s;
     if (s) {
       // Anchor to the active view's content area so the toolbar never bleeds over sidebars.
-      this.anchorEl = el ? ((el.closest('.view-content') as HTMLElement) ?? el) : null;
+      this.anchorEl = el ? ((el.closest('.view-content')) ?? el) : null;
       // A real drawing means the full toolbar, not the pill. If we were only showing the
       // no-surface pill (forced collapsed), expand now; but preserve a user's own collapse
       // choice when switching between two actual drawings.
@@ -288,7 +288,7 @@ export class GlobalToolbar {
   /** Tell the toolbar which Markdown/Canvas view content to anchor the persistent pill to when
    * no surface is active. Pass null on views where drawing makes no sense (hides the toolbar). */
   setHost(anchorEl: HTMLElement | null): void {
-    this.hostEl = anchorEl ? ((anchorEl.closest('.view-content') as HTMLElement) ?? anchorEl) : null;
+    this.hostEl = anchorEl ? ((anchorEl.closest('.view-content')) ?? anchorEl) : null;
     if (!this.surface) this.refreshNoSurface();
   }
 

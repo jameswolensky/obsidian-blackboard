@@ -97,7 +97,9 @@ export default class BlackboardPlugin extends Plugin {
       callback: async () => {
         try {
           await insertDrawingAtCursor(this.app, this.settings, this.createDrawingUseCase, this.repo, this.surfaceManager, this.toolManager, this.documentStore);
-        } catch {}
+        } catch {
+          // Insertion is best-effort: no Markdown/Canvas host is a normal no-op, not an error.
+        }
       },
     });
 
@@ -107,7 +109,9 @@ export default class BlackboardPlugin extends Plugin {
       callback: () => {
         try {
           insertExistingDrawing(this.app, this.repo, this.settings, this.surfaceManager, this.toolManager, this.documentStore);
-        } catch {}
+        } catch {
+          // Best-effort like insert-drawing: absence of a host must not surface an error.
+        }
       },
     });
 
@@ -131,13 +135,13 @@ export default class BlackboardPlugin extends Plugin {
           // Explicit |WxH / |N% alias overrides the default.
           if (size.width !== null) (embedEl as HTMLElement).style.width = size.width;
           if (size.height !== null) (embedEl as HTMLElement).style.height = size.height;
-          mountBlackboardEmbed(this.repo, embedEl as HTMLElement, file.path, this.settings, this.surfaceManager, this.toolManager, this.documentStore);
+          void mountBlackboardEmbed(this.repo, embedEl as HTMLElement, file.path, this.settings, this.surfaceManager, this.toolManager, this.documentStore);
         } else {
           // No alias: render at the drawing's saved size, centred, capped to the note
           // width. Reading the file first keeps the embed image-like rather than
           // stretching to full width.
           void this.applySavedEmbedSize(embedEl as HTMLElement, file.path).then(() => {
-            mountBlackboardEmbed(this.repo, embedEl as HTMLElement, file.path, this.settings, this.surfaceManager, this.toolManager, this.documentStore);
+            void mountBlackboardEmbed(this.repo, embedEl as HTMLElement, file.path, this.settings, this.surfaceManager, this.toolManager, this.documentStore);
           });
         }
       });
@@ -174,9 +178,13 @@ export default class BlackboardPlugin extends Plugin {
       try {
         const content = await this.app.vault.read(file);
         this.documentStore.reconcile(file.path, content);
-      } catch {}
+      } catch {
+        // File may be mid-rename or unreadable this tick; the next modify event reconciles.
+      }
       if (this.settings.autoExportSvg) {
-        try { await this.exportSvgUseCase.execute(file.path, this.settings.svgExportPath); } catch {}
+        try { await this.exportSvgUseCase.execute(file.path, this.settings.svgExportPath); } catch {
+          // Auto-export must never block or fail the save that triggered it.
+        }
       }
     }));
 

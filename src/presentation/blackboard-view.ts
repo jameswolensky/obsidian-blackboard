@@ -153,7 +153,9 @@ export class BlackboardView extends TextFileView {
         fileWidth = result.file.width;
         fileHeight = result.file.height;
         fileStrokes = result.file.strokes;
-      } catch {}
+      } catch {
+        // Unparseable data falls back to the 800x600 empty-drawing defaults above.
+      }
     }
 
     // Share the plugin's single ToolManager so tool/colour/size are global across every
@@ -291,7 +293,9 @@ export class BlackboardView extends TextFileView {
         } else {
           this.layoutStandalone();
         }
-      } catch {}
+      } catch {
+        // Layout during teardown can race a detached container; the next resize re-lays out.
+      }
       this.engine.staticDirty = true;
       this.engine.render();
     }
@@ -310,7 +314,9 @@ export class BlackboardView extends TextFileView {
     if (this.engine && this.file && !this.handle) {
       try {
         await this.app.vault.modify(this.file, this.getViewData());
-      } catch {}
+      } catch {
+        // Save is retried on the next stroke end; failing here must not break the view.
+      }
     }
     if (this.handle) {
       this.handle.release();
@@ -367,7 +373,7 @@ export class BlackboardView extends TextFileView {
     if (!canvasNode) return;
 
     const hideBlocker = () => {
-      const blocker = canvasNode!.querySelector('.canvas-node-content-blocker') as HTMLElement | null;
+      const blocker = canvasNode.querySelector<HTMLElement>('.canvas-node-content-blocker');
       if (blocker) blocker.style.display = 'none';
     };
     hideBlocker();

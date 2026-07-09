@@ -105,13 +105,16 @@ export function createDefaultFile(_settings: PluginSettings): BlackboardFile {
   };
 }
 
-export function validateFileData(raw: any): BlackboardFile | null {
-  if (!raw || typeof raw !== 'object') return null;
+const isRecord = (v: unknown): v is Record<string, unknown> =>
+  typeof v === 'object' && v !== null;
+
+export function validateFileData(raw: unknown): BlackboardFile | null {
+  if (!isRecord(raw)) return null;
   if (typeof raw.version !== 'number') return null;
   if (!Array.isArray(raw.strokes)) return null;
 
-  const strokes = raw.strokes.filter((s: any) =>
-    s && typeof s.id === 'string' &&
+  const strokes = raw.strokes.filter((s: unknown): s is Stroke =>
+    isRecord(s) && typeof s.id === 'string' &&
     Array.isArray(s.points) &&
     typeof s.color === 'string' &&
     typeof s.tool === 'string'
@@ -122,9 +125,11 @@ export function validateFileData(raw: any): BlackboardFile | null {
     width: (typeof raw.width === 'number' && raw.width > 0) ? raw.width : 800,
     height: (typeof raw.height === 'number' && raw.height > 0) ? raw.height : 600,
     strokes,
-    background: raw.background || { color: 'transparent' },
+    background: isRecord(raw.background) && typeof raw.background.color === 'string'
+      ? { color: raw.background.color }
+      : { color: 'transparent' },
   };
-  if (raw.contentBounds && typeof raw.contentBounds === 'object') {
+  if (isRecord(raw.contentBounds)) {
     const cb = raw.contentBounds;
     if (typeof cb.x === 'number' && typeof cb.y === 'number' &&
         typeof cb.width === 'number' && cb.width >= 0 &&

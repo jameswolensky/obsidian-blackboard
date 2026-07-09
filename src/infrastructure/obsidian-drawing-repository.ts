@@ -52,7 +52,7 @@ export class ObsidianDrawingRepository implements IDrawingRepository {
   async delete(path: string): Promise<void> {
     const file = this.app.vault.getAbstractFileByPath(path);
     if (file instanceof TFile) {
-      await this.app.vault.delete(file);
+      await this.app.fileManager.trashFile(file);
     }
   }
 

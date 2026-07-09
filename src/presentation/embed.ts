@@ -83,7 +83,7 @@ export async function mountBlackboardEmbed(repo: IDrawingRepository, embedEl: HT
   }
   if (canvasNode) {
     const hideBlocker = () => {
-      const blocker = canvasNode!.querySelector('.canvas-node-content-blocker') as HTMLElement | null;
+      const blocker = canvasNode.querySelector<HTMLElement>('.canvas-node-content-blocker');
       if (blocker) blocker.style.display = 'none';
     };
     hideBlocker();
@@ -177,10 +177,12 @@ export async function mountBlackboardEmbed(repo: IDrawingRepository, embedEl: HT
       // The store is the single writer: commit persists (debounced) and refreshes siblings.
       if (handle) handle.commit(fileToSave);
       else await repo.save(filePath, fileToSave);
-    } catch {}
+    } catch {
+      // Best-effort save; the next stroke end retries. Never break drawing over I/O.
+    }
   }
 
-  const surface = engineSurface(engine, () => { saveDrawing(); });
+  const surface = engineSurface(engine, () => { void saveDrawing(); });
   surfaceManager?.register(surface, drawingContainer);
   // Auto-show the shared toolbar when a page/node already contains a drawing, instead
   // of waiting for the first pointer interaction.
@@ -269,7 +271,7 @@ export async function mountBlackboardEmbed(repo: IDrawingRepository, embedEl: HT
     surfaceManager?.notifyStrokeEnd();
     // Do not re-fit the view on stroke end: the view is fitted once on mount and only
     // re-fitted by the ResizeObserver above. Strokes beyond the node edge are clipped.
-    saveDrawing();
+    void saveDrawing();
   };
 
   activeDocument.addEventListener('pointerdown', onDocPointerDown, true);

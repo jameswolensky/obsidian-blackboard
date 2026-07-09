@@ -136,7 +136,7 @@ function patchCanvasFileNodes(repo: IDrawingRepository, app: App, settings: Plug
     // present, skip — mounting a second engine would paint the in-progress stroke twice.
     if (contentEl.querySelector('.blackboard-static')) continue;
 
-    mountBlackboardEmbed(repo, contentEl, node.file.path, settings, surfaceManager, toolManager, store);
+    void mountBlackboardEmbed(repo, contentEl, node.file.path, settings, surfaceManager, toolManager, store);
     // No automatic content-driven node sizing: a drawing must only ever resize when
     // the user resizes the node. Growing the node to match strokes made the node creep
     // larger as you drew near an edge.
@@ -157,7 +157,7 @@ export function patchCanvas(app: App, plugin: Plugin, settings: PluginSettings, 
     btn.classList.add('canvas-card-menu-button');
     setIcon(btn, 'pencil');
     setTooltip(btn, 'New Drawing', { placement: 'top' });
-    btn.addEventListener('click', () => insertDrawingAtCursor(app, settings, createDrawing, repo, surfaceManager, toolManager, store));
+    btn.addEventListener('click', () => { void insertDrawingAtCursor(app, settings, createDrawing, repo, surfaceManager, toolManager, store); });
     menuEl.appendChild(btn);
 
     patchCanvasFileNodes(repo, app, settings, surfaceManager, toolManager, store);
