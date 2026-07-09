@@ -50,8 +50,24 @@ export const ICONS: Record<IconName, string> = {
   ),
 };
 
+/**
+ * Parse icon markup into a real SVG element WITHOUT innerHTML (review guideline) and
+ * WITHOUT strict `image/svg+xml` parsing: text/html parsing is deliberately
+ * namespace-forgiving — the HTML parser places <svg> subtrees in the SVG namespace
+ * automatically. Strict image/svg+xml parsing rendered BLANK icons on iPad WKWebView
+ * (the 1.0.5 regression) — do not "fix" this back to it. The markup is a compile-time
+ * constant from ICONS/`svg()` above, never user input.
+ */
+function svgFromString(markup: string): SVGSVGElement {
+  const doc = new DOMParser().parseFromString(markup, 'text/html');
+  const svg = doc.body.querySelector('svg');
+  if (!svg) throw new Error('icon markup contained no <svg>');
+  return document.importNode(svg, true);
+}
+
 export function setToolbarIcon(el: HTMLElement, name: IconName): void {
-  el.innerHTML = ICONS[name];
+  el.empty();
+  el.appendChild(svgFromString(ICONS[name]));
 }
 
 /**
@@ -71,7 +87,11 @@ export function sizeToDotDiameter(size: number): number {
  */
 export function setSizeDotIcon(el: HTMLElement, size: number): void {
   const d = sizeToDotDiameter(size);
-  el.innerHTML =
-    `<svg viewBox="0 0 24 24" fill="none" aria-hidden="true">` +
-    `<circle cx="12" cy="12" r="${d / 2}" fill="#ffffff" stroke="none"/></svg>`;
+  el.empty();
+  el.appendChild(
+    svgFromString(
+      `<svg viewBox="0 0 24 24" fill="none" aria-hidden="true">` +
+        `<circle cx="12" cy="12" r="${d / 2}" fill="#ffffff" stroke="none"/></svg>`,
+    ),
+  );
 }
