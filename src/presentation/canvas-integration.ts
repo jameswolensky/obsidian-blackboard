@@ -1,4 +1,4 @@
-import { App, Plugin, TFile, FuzzySuggestModal, Notice, setIcon, setTooltip, MarkdownView, View } from 'obsidian';
+import { App, Plugin, TFile, FuzzySuggestModal, Notice, MarkdownView, View } from 'obsidian';
 import type { PluginSettings } from '../domain/entities';
 import type { IDrawingRepository } from '../domain/ports';
 import { CreateDrawingUseCase } from '../application/use-cases/create-drawing';
@@ -152,16 +152,10 @@ export function patchCanvas(app: App, plugin: Plugin, settings: PluginSettings, 
     if (!leaf) return;
     const view = leaf.view as CanvasHostLike;
     if (!view?.canvas?.cardMenuEl) return;
-    const menuEl = view.canvas.cardMenuEl;
-    if (menuEl.querySelector('#blackboard-add-drawing')) return;
-
-    const btn = createDiv();
-    btn.id = 'blackboard-add-drawing';
-    btn.classList.add('canvas-card-menu-button');
-    setIcon(btn, 'pencil');
-    setTooltip(btn, 'New Drawing', { placement: 'top' });
-    btn.addEventListener('click', () => { void insertDrawingAtCursor(app, settings, createDrawing, repo, surfaceManager, toolManager, store); });
-    menuEl.appendChild(btn);
+    // The card-menu pencil button was removed by design: the floating toolbar's
+    // new/insert buttons are the ONLY on-screen entry points. Older versions added
+    // #blackboard-add-drawing here — remove any survivor so reloads heal the menu.
+    view.canvas.cardMenuEl.querySelector('#blackboard-add-drawing')?.remove();
 
     patchCanvasFileNodes(repo, app, settings, surfaceManager, toolManager, store);
   }));

@@ -414,7 +414,7 @@ describe('patchCanvas', () => {
     expect(mockPlugin.register).toHaveBeenCalled();
   });
 
-  it('layout-change handler adds button when canvas has cardMenuEl', () => {
+  it('layout-change handler does NOT add the card-menu pencil button (toolbar is the only entry point)', () => {
     // patchCanvas imported at top
 
     const menuEl = document.createElement('div');
@@ -445,7 +445,7 @@ describe('patchCanvas', () => {
     const layoutChangeCalls = mockApp.workspace.on.mock.calls.filter((c: any) => c[0] === 'layout-change');
     layoutChangeCalls[0][1]();
 
-    expect(menuEl.querySelector('#blackboard-add-drawing')).not.toBeNull();
+    expect(menuEl.querySelector('#blackboard-add-drawing')).toBeNull();
   });
 
   it('layout-change handler does nothing when leaf is null', () => {
@@ -469,7 +469,7 @@ describe('patchCanvas', () => {
     layoutChangeCalls[0][1]();
   });
 
-  it('layout-change handler does not add duplicate button', () => {
+  it('layout-change handler removes a stale pencil button left by an older version', () => {
     // patchCanvas imported at top
 
     const menuEl = document.createElement('div');
@@ -500,7 +500,7 @@ describe('patchCanvas', () => {
     const layoutChangeCalls = mockApp.workspace.on.mock.calls.filter((c: any) => c[0] === 'layout-change');
     layoutChangeCalls[0][1]();
 
-    expect(menuEl.querySelectorAll('#blackboard-add-drawing').length).toBe(1);
+    expect(menuEl.querySelectorAll('#blackboard-add-drawing').length).toBe(0);
   });
 });
 
