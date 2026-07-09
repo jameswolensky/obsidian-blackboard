@@ -1,7 +1,24 @@
 import { PluginSettingTab, App, Setting } from 'obsidian';
-import type { SettingDefinitionItem } from 'obsidian';
 import type { PluginSettings } from '../domain/entities';
 import type BlackboardPlugin from '../main';
+
+/**
+ * Structural subset of Obsidian 1.13's SettingDefinitionItem group shape. Typings stay
+ * pinned to 1.12 while minAppVersion (1.6.6) predates the declarative renderer, so the
+ * shape is declared locally; Obsidian 1.13+ consumes it at runtime for settings search.
+ */
+interface SettingDefinitionGroupSubset {
+  type: 'group';
+  heading: string;
+  items: Array<{
+    name: string;
+    desc?: string;
+    visible?: () => boolean;
+    control:
+      | { type: 'text' | 'toggle' | 'color'; key: string }
+      | { type: 'dropdown'; key: string; options: Record<string, string> };
+  }>;
+}
 
 export class BlackboardSettingTab extends PluginSettingTab {
   private plugin: BlackboardPlugin;
@@ -16,7 +33,7 @@ export class BlackboardSettingTab extends PluginSettingTab {
    * kept (minAppVersion predates 1.13); on older versions it remains the only renderer.
    * Both read/write the same PluginSettings through get/setControlValue below.
    */
-  getSettingDefinitions(): SettingDefinitionItem[] {
+  getSettingDefinitions(): SettingDefinitionGroupSubset[] {
     return [
       {
         type: 'group',
@@ -92,9 +109,6 @@ export class BlackboardSettingTab extends PluginSettingTab {
     await this.plugin.saveSettings();
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-deprecated -- display() must remain
-  // while minAppVersion (1.6.6) predates the 1.13 declarative renderer; Obsidian's own
-  // settings-tab/no-deprecated-display rule sanctions keeping it until minAppVersion >= 1.13.
   display(): void {
     const { containerEl } = this;
     containerEl.empty();
