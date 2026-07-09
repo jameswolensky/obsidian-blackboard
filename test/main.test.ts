@@ -111,6 +111,21 @@ describe('BlackboardPlugin', () => {
   });
 
   describe('onload', () => {
+    it('heals stale bbMounted markers from a previous plugin instance at startup', async () => {
+      // A prior instance (old version / hot-swap) left a mounted embed behind: marker
+      // set and engine DOM present. onload must clear both so re-mount can happen.
+      const stale = document.body.createDiv();
+      stale.dataset.bbMounted = 'true';
+      stale.createDiv({ cls: 'blackboard-static' });
+      const plugin = createPlugin();
+
+      await plugin.onload();
+
+      expect(stale.dataset.bbMounted).toBe('false');
+      expect(stale.querySelector('.blackboard-static')).toBeNull();
+      stale.remove();
+    });
+
     it('registers view, extensions, commands, and settings tab', async () => {
       const plugin = createPlugin();
 

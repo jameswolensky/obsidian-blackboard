@@ -43,6 +43,21 @@ function suppressEditorFocus(): void {
   if (isEditor) active.blur();
 }
 
+/**
+ * Cleanups of every live embed mount. Plugin reloads (store update, sync restart,
+ * dev hot-swap, manual toggle) MUST unmount all embeds via unmountAllEmbeds():
+ * otherwise the surviving DOM keeps dataset.bbMounted='true', the next plugin
+ * instance refuses to re-mount, and the user draws on an orphaned engine whose
+ * surface the new toolbar has never heard of (dead/disabled toolbar until the
+ * note is reopened) — plus the orphan's document-level listeners leak.
+ */
+const liveMounts = new Set<() => void>();
+
+export function unmountAllEmbeds(): void {
+  for (const cleanup of Array.from(liveMounts)) cleanup();
+  liveMounts.clear();
+}
+
 export async function mountBlackboardEmbed(repo: IDrawingRepository, embedEl: HTMLElement, filePath: string, settings: PluginSettings, surfaceManager?: SurfaceManager, toolManager?: ToolManager, store?: DocumentStore): Promise<() => void> {
   if (embedEl.dataset.bbMounted === 'true') return () => {};
   embedEl.dataset.bbMounted = 'true';
@@ -332,7 +347,8 @@ export async function mountBlackboardEmbed(repo: IDrawingRepository, embedEl: HT
   docListeners.push({ type: 'touchstart', fn: blockScribbleDoc, capture: true });
   docListeners.push({ type: 'touchmove', fn: blockScribbleDoc, capture: true });
 
-  return () => {
+  const cleanup = () => {
+    liveMounts.delete(cleanup);
     for (const l of docListeners) {
       if (l.type === '__observer__') { l.fn(null); } else { activeDocument.removeEventListener(l.type, l.fn, l.capture); }
     }
@@ -343,4 +359,6 @@ export async function mountBlackboardEmbed(repo: IDrawingRepository, embedEl: HT
     handle?.release();
     embedEl.dataset.bbMounted = 'false';
   };
+  liveMounts.add(cleanup);
+  return cleanup;
 }

@@ -9,7 +9,7 @@ import { ExportSvgUseCase } from './application/use-cases/export-svg';
 import { BlackboardView, VIEW_TYPE, FILE_EXTENSION } from './presentation/blackboard-view';
 import { insertDrawingAtCursor, insertExistingDrawing, patchCanvas } from './presentation/canvas-integration';
 import { BlackboardSettingTab } from './presentation/settings';
-import { mountBlackboardEmbed } from './presentation/embed';
+import { mountBlackboardEmbed, unmountAllEmbeds } from './presentation/embed';
 import { SurfaceManager } from './presentation/surface-manager';
 import { DocumentStore } from './application/document-store';
 import { GlobalToolbar } from './presentation/global-toolbar';
@@ -146,6 +146,20 @@ export default class BlackboardPlugin extends Plugin {
         }
       });
     };
+
+    // Startup heal: any bbMounted marker present NOW is stale (this instance has
+    // mounted nothing yet) — left by a previous instance whose unload predates the
+    // unmount fix. Clear marker + orphaned engine DOM so re-mount can happen.
+    for (const el of Array.from(
+      activeDocument.querySelectorAll<HTMLElement>('[data-bb-mounted="true"]'),
+    )) {
+      el.dataset.bbMounted = 'false';
+      el.empty();
+    }
+
+    // Unmount every live embed when the plugin unloads (reload/update/disable):
+    // leaves the DOM re-mountable for the next instance and removes doc listeners.
+    this.register(() => unmountAllEmbeds());
 
     this.registerEvent(this.app.workspace.on('layout-change', processEmbeds));
 

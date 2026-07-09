@@ -48,6 +48,7 @@ export interface DevAudit {
   bodyClasses: string[];
   viewport: { w: number; h: number };
   toolbarPresent: boolean;
+  toolbarCount: number;
   toolbarRect: { x: number; y: number; width: number; height: number } | null;
   pillPresent: boolean;
   controls: ControlAudit[];
@@ -68,7 +69,11 @@ export function collectAudit(
   meta: { pluginVersion: string; buildHash: string },
 ): DevAudit {
   const win = doc.defaultView ?? window;
-  const toolbar = doc.querySelector('.blackboard-global-toolbar');
+  // Hot-swaps can theoretically orphan a stale toolbar; audit the VISIBLE instance
+  // and report how many exist so duplicates are detectable from the Mac.
+  const toolbars = Array.from(doc.querySelectorAll('.blackboard-global-toolbar'));
+  const toolbar =
+    toolbars.find((t) => t.getBoundingClientRect().width > 0) ?? toolbars[0] ?? null;
   const pill = doc.querySelector('.blackboard-global-toolbar-pill');
   const controls: ControlAudit[] = [];
   const sel =
@@ -95,6 +100,7 @@ export function collectAudit(
     bodyClasses: Array.from(doc.body.classList),
     viewport: { w: win.innerWidth, h: win.innerHeight },
     toolbarPresent: toolbar !== null,
+    toolbarCount: toolbars.length,
     toolbarRect: toolbar ? rectOf(toolbar) : null,
     pillPresent: pill !== null,
     controls,
@@ -165,6 +171,10 @@ export function startDevBridge(plugin: Plugin): void {
 
   const interval = window.setInterval(() => void tick(), 3000);
   plugin.register(() => window.clearInterval(interval));
+  // Periodic audit so state changes (pill expanded, tool switched) get captured
+  // without needing the command palette on the device.
+  const auditInterval = window.setInterval(() => void audit(), 15000);
+  plugin.register(() => window.clearInterval(auditInterval));
 
   plugin.addCommand({
     id: 'dev-audit',

@@ -1377,3 +1377,42 @@ describe('markdown embed re-fits on host resize with the maxScale cap', () => {
     document.body.removeChild(embedEl);
   });
 });
+
+describe('unmountAllEmbeds — plugin reload lifecycle', () => {
+  it('unmounts every live embed so a new plugin instance can re-mount them', async () => {
+    const { mountBlackboardEmbed, unmountAllEmbeds } = await import('../src/presentation/embed');
+    const repo = makeRepo();
+    const el = document.createElement('div');
+    document.body.appendChild(el);
+
+    await mountBlackboardEmbed(repo, el, 'A.blackboard', makeSettings());
+    expect(el.dataset.bbMounted).toBe('true');
+
+    // Simulates plugin onunload: without this, dataset.bbMounted stays 'true' on the
+    // surviving DOM and the NEXT plugin instance refuses to re-mount (dead toolbar bug).
+    unmountAllEmbeds();
+    expect(el.dataset.bbMounted).toBe('false');
+
+    // A fresh instance can now mount the same element again.
+    await mountBlackboardEmbed(repo, el, 'A.blackboard', makeSettings());
+    expect(el.dataset.bbMounted).toBe('true');
+    unmountAllEmbeds();
+    expect(el.dataset.bbMounted).toBe('false');
+    el.remove();
+  });
+
+  it('an individually cleaned-up embed is not cleaned twice by unmountAllEmbeds', async () => {
+    const { mountBlackboardEmbed, unmountAllEmbeds } = await import('../src/presentation/embed');
+    const repo = makeRepo();
+    const el = document.createElement('div');
+    document.body.appendChild(el);
+
+    const cleanup = await mountBlackboardEmbed(repo, el, 'B.blackboard', makeSettings());
+    cleanup();
+    expect(el.dataset.bbMounted).toBe('false');
+    el.dataset.bbMounted = 'true'; // simulate a NEW mount owned by someone else
+    unmountAllEmbeds(); // must not touch it (the earlier cleanup already deregistered)
+    expect(el.dataset.bbMounted).toBe('true');
+    el.remove();
+  });
+});
