@@ -82,7 +82,7 @@ export async function embedDrawingIntoHost(
 
 export async function insertDrawingAtCursor(app: App, settings: PluginSettings, createDrawing: CreateDrawingUseCase, repo: IDrawingRepository, surfaceManager?: SurfaceManager, toolManager?: ToolManager, store?: DocumentStore): Promise<void> {
   if (isBlackboardViewActive(app)) {
-    new Notice('Open a Markdown or Canvas note to insert a drawing.');
+    new Notice('Open a Markdown or canvas note to insert a drawing.');
     return;
   }
   const path = await createDrawing.execute(settings, 'fixed');
@@ -111,7 +111,7 @@ export class BlackboardFileSuggestModal extends FuzzySuggestModal<TFile> {
 /** Open the file picker and embed the chosen existing drawing into the active host. */
 export function insertExistingDrawing(app: App, repo: IDrawingRepository, settings: PluginSettings, surfaceManager?: SurfaceManager, toolManager?: ToolManager, store?: DocumentStore): void {
   if (isBlackboardViewActive(app)) {
-    new Notice('Open a Markdown or Canvas note to insert a drawing.');
+    new Notice('Open a Markdown or canvas note to insert a drawing.');
     return;
   }
   new BlackboardFileSuggestModal(app, (file) => {

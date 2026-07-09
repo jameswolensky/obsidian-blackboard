@@ -275,3 +275,42 @@ describe('BlackboardSettingTab', () => {
     expect(plugin.settings.svgExportPath).toBe('exports/svg');
   });
 });
+
+describe('getSettingDefinitions (Obsidian 1.13+ settings search)', () => {
+  it('declares every setting with keys matching PluginSettings', () => {
+    const tab = createTab();
+    const defs = tab.getSettingDefinitions();
+
+    const flat: any[] = [];
+    for (const d of defs as any[]) {
+      if (d.items) flat.push(...d.items);
+      else flat.push(d);
+    }
+    const keys = flat.map((d) => d.control?.key).filter(Boolean);
+    expect(keys).toContain('drawingFolder');
+    expect(keys).toContain('newFileLocation');
+    expect(keys).toContain('autoExportSvg');
+    expect(keys).toContain('svgExportPath');
+    expect(keys).toContain('showToolbarPill');
+    for (let i = 0; i < 8; i++) expect(keys).toContain(`paletteColors.${i}`);
+  });
+
+  it('hides svgExportPath from search when auto-export is off', () => {
+    const tab = createTab({ autoExportSvg: false });
+    const defs = tab.getSettingDefinitions() as any[];
+    const all = defs.flatMap((d) => (d.items ? d.items : [d]));
+    const svgPath = all.find((d) => d.control?.key === 'svgExportPath');
+    expect(typeof svgPath.visible).toBe('function');
+    expect(svgPath.visible()).toBe(false);
+  });
+
+  it('control values round-trip through plugin settings, including palette entries', async () => {
+    const tab = createTab();
+    expect(tab.getControlValue('drawingFolder')).toBe(DEFAULT_PLUGIN_SETTINGS.drawingFolder);
+    await tab.setControlValue('paletteColors.2', '#abcdef');
+    expect(tab.getControlValue('paletteColors.2')).toBe('#abcdef');
+    await tab.setControlValue('showToolbarPill', false);
+    expect(tab.getControlValue('showToolbarPill')).toBe(false);
+    expect((tab as any).plugin.saveSettings).toHaveBeenCalled();
+  });
+});
