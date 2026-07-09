@@ -1,8 +1,16 @@
 import esbuild from "esbuild";
 import process from "process";
+import os from "node:os";
 import { builtinModules } from "node:module";
 
 const prod = process.argv[2] === "production";
+
+// __DEV_BUILD__ gates src/dev/* out of release builds (tree-shaken).
+// __DEV_SERVER__ lets the iPad resolve this Mac over mDNS without hardcoding an IP.
+const define = {
+  __DEV_BUILD__: prod ? "false" : "true",
+  __DEV_SERVER__: JSON.stringify(`http://${os.hostname()}:8737`),
+};
 
 esbuild.build({
   entryPoints: ["src/main.ts"],
@@ -26,6 +34,7 @@ esbuild.build({
   ],
   format: "cjs",
   target: "es2018",
+  define,
   logLevel: "info",
   sourcemap: prod ? false : "inline",
   treeShaking: true,
