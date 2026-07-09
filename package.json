@@ -17,7 +17,7 @@
     "release:patch": "npm version patch -m \"release: %s\"",
     "release:minor": "npm version minor -m \"release: %s\"",
     "release:major": "npm version major -m \"release: %s\"",
-    "scan": "eslint src; echo CSS_IMPORTANT_COUNT=$(grep -c '!important' styles.css)",
+    "scan": "eslint src && node scripts/scan-guards.mjs",
     "test:e2e": "wdio run wdio.desktop.conf.mts",
     "test:e2e:mobile": "wdio run wdio.mobile.conf.mts",
     "lint": "eslint src"

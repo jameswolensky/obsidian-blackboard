@@ -58,16 +58,17 @@ export const ICONS: Record<IconName, string> = {
  * (the 1.0.5 regression) — do not "fix" this back to it. The markup is a compile-time
  * constant from ICONS/`svg()` above, never user input.
  */
-function svgFromString(markup: string): SVGSVGElement {
-  const doc = new DOMParser().parseFromString(markup, 'text/html');
-  const svg = doc.body.querySelector('svg');
+function svgFromString(markup: string, doc: Document): SVGSVGElement {
+  const parsed = new DOMParser().parseFromString(markup, 'text/html');
+  const svg = parsed.body.querySelector('svg');
   if (!svg) throw new Error('icon markup contained no <svg>');
-  return document.importNode(svg, true);
+  // Import into the TARGET element's document (popout-safe), not the global one.
+  return doc.importNode(svg, true);
 }
 
 export function setToolbarIcon(el: HTMLElement, name: IconName): void {
   el.empty();
-  el.appendChild(svgFromString(ICONS[name]));
+  el.appendChild(svgFromString(ICONS[name], el.ownerDocument));
 }
 
 /**
@@ -92,6 +93,7 @@ export function setSizeDotIcon(el: HTMLElement, size: number): void {
     svgFromString(
       `<svg viewBox="0 0 24 24" fill="none" aria-hidden="true">` +
         `<circle cx="12" cy="12" r="${d / 2}" fill="#ffffff" stroke="none"/></svg>`,
+      el.ownerDocument,
     ),
   );
 }
