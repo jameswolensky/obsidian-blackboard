@@ -90,9 +90,7 @@ export class GlobalToolbar {
   /** Read env(safe-area-inset-bottom) via a probe so the palette clears the
    * iPad home indicator. Zero on desktop. */
   private measureSafeBottom(): void {
-    const probe = createDiv();
-    probe.style.cssText =
-      'position:fixed;left:0;bottom:0;width:0;height:env(safe-area-inset-bottom);visibility:hidden;pointer-events:none;';
+    const probe = createDiv({ cls: 'blackboard-safe-area-probe' });
     activeDocument.body.appendChild(probe);
     this.safeBottom = probe.getBoundingClientRect().height || 0;
     probe.remove();
@@ -184,7 +182,7 @@ export class GlobalToolbar {
 
   private buildColorPopover(): void {
     this.colorPopover = this.host.createDiv({ cls: 'blackboard-gt-popover blackboard-gt-color-popover' });
-    this.colorPopover.style.display = 'none';
+    this.colorPopover.setCssStyles({ display: 'none' });
     this.colorPopover.addEventListener('pointerdown', (e) => e.stopPropagation());
 
     const swatches = this.colorPopover.createDiv({ cls: 'blackboard-gt-swatches' });
@@ -219,7 +217,7 @@ export class GlobalToolbar {
 
   private buildSizePopover(): void {
     this.sizePopover = this.host.createDiv({ cls: 'blackboard-gt-popover blackboard-gt-size-popover' });
-    this.sizePopover.style.display = 'none';
+    this.sizePopover.setCssStyles({ display: 'none' });
     this.sizePopover.addEventListener('pointerdown', (e) => e.stopPropagation());
     const label = this.sizePopover.createDiv({ cls: 'blackboard-gt-popover-label' });
     label.textContent = 'Brush size';
@@ -423,11 +421,11 @@ export class GlobalToolbar {
   private togglePopover(which: 'color' | 'size'): void {
     const target = which === 'color' ? this.colorPopover : this.sizePopover;
     const other = which === 'color' ? this.sizePopover : this.colorPopover;
-    other.style.display = 'none';
+    other.setCssStyles({ display: 'none' });
     const open = target.style.display === 'none';
     this.closePopovers();
     if (open) {
-      target.style.display = '';
+      target.setCssStyles({ display: '' });
       if (which === 'color' && this.picker && this.surface) {
         try { this.picker.color.hexString = this.surface.activeColor; } catch { /* ignore */ }
       }
@@ -440,8 +438,8 @@ export class GlobalToolbar {
   }
 
   private closePopovers(): void {
-    this.colorPopover.style.display = 'none';
-    this.sizePopover.style.display = 'none';
+    this.colorPopover.setCssStyles({ display: 'none' });
+    this.sizePopover.setCssStyles({ display: 'none' });
   }
 
   private positionPopover(p: HTMLElement): void {
@@ -461,8 +459,8 @@ export class GlobalToolbar {
     this.closePopovers();
     // Allow expand/collapse in the host-only (no-surface) state too, not just when drawing.
     if (!this.surface && !this.hostEl) return;
-    this.root.style.display = c ? 'none' : '';
-    this.pill.style.display = c ? '' : 'none';
+    this.root.setCssStyles({ display: c ? 'none' : '' });
+    this.pill.setCssStyles({ display: c ? '' : 'none' });
     if (c) { this.updatePillIcon(); this.placePill(); }
     else this.placeToolbar();
   }
@@ -475,13 +473,13 @@ export class GlobalToolbar {
 
   private show(): void {
     // Set display BEFORE measuring so offsetWidth/Height are non-zero.
-    if (this.collapsed) { this.pill.style.display = ''; this.root.style.display = 'none'; this.updatePillIcon(); this.placePill(); }
-    else { this.root.style.display = ''; this.pill.style.display = 'none'; this.placeToolbar(); }
+    if (this.collapsed) { this.pill.setCssStyles({ display: '' }); this.root.setCssStyles({ display: 'none' }); this.updatePillIcon(); this.placePill(); }
+    else { this.root.setCssStyles({ display: '' }); this.pill.setCssStyles({ display: 'none' }); this.placeToolbar(); }
   }
 
   private hide(): void {
-    this.root.style.display = 'none';
-    this.pill.style.display = 'none';
+    this.root.setCssStyles({ display: 'none' });
+    this.pill.setCssStyles({ display: 'none' });
     this.closePopovers();
   }
 

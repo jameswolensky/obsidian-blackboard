@@ -43,6 +43,13 @@ if (!HTMLElement.prototype.createEl) {
   };
 }
 
+// jsdom lacks Obsidian's setCssStyles; mirror its behavior (assign onto inline style).
+if (!HTMLElement.prototype.setCssStyles) {
+  (HTMLElement.prototype as any).setCssStyles = function (styles: Partial<CSSStyleDeclaration>) {
+    Object.assign(this.style, styles);
+  };
+}
+
 if (typeof globalThis.URL.createObjectURL !== 'function') {
   globalThis.URL.createObjectURL = vi.fn(() => 'blob:mock');
 }

@@ -182,7 +182,7 @@ export class BlackboardView extends TextFileView {
     } else {
       // Standalone: an infinite pan + zoom canvas. The surface fills the pane and
       // navigation is via the view transform (pan/zoom), NOT document scroll.
-      container.style.position = 'relative';
+      container.setCssStyles({ position: 'relative' });
       this.layoutStandalone();
       this.resizeObserver = new ResizeObserver(() => this.layoutStandalone());
       this.resizeObserver.observe(container);
@@ -383,7 +383,7 @@ export class BlackboardView extends TextFileView {
 
     const hideBlocker = () => {
       const blocker = canvasNode.querySelector<HTMLElement>('.canvas-node-content-blocker');
-      if (blocker) blocker.style.display = 'none';
+      if (blocker) blocker.setCssStyles({ display: 'none' });
     };
     hideBlocker();
 

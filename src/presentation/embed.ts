@@ -48,9 +48,9 @@ export async function mountBlackboardEmbed(repo: IDrawingRepository, embedEl: HT
   embedEl.dataset.bbMounted = 'true';
   embedEl.empty();
   embedEl.addClass('blackboard-embed');
-  embedEl.style.position = 'relative';
-  embedEl.style.display = 'flex';
-  embedEl.style.flexDirection = 'column';
+  // Inline (not a class): embedEl carries host classes (.internal-embed etc.) whose
+  // app/theme rules these must always beat.
+  embedEl.setCssStyles({ position: 'relative', display: 'flex', flexDirection: 'column' });
 
   // The shared document is the single source of truth for this path: the engine renders
   // from its canonical strokes and writes through it, so sibling surfaces stay in sync
@@ -64,10 +64,9 @@ export async function mountBlackboardEmbed(repo: IDrawingRepository, embedEl: HT
 
   const drawingContainer = createDiv();
   drawingContainer.className = 'blackboard-drawing-container blackboard-embedded-drawing';
-  drawingContainer.style.position = 'relative';
-  drawingContainer.style.width = '100%';
-  drawingContainer.style.flex = '1';
-  drawingContainer.style.minHeight = '150px';
+  // Inline (not a class): position:relative must override .blackboard-embedded-drawing's
+  // position:absolute for the flex-child layout used here.
+  drawingContainer.setCssStyles({ position: 'relative', width: '100%', flex: '1', minHeight: '150px' });
   embedEl.appendChild(drawingContainer);
 
   // Display size is measured from the drawing surface element (the same one the pointer
@@ -93,7 +92,7 @@ export async function mountBlackboardEmbed(repo: IDrawingRepository, embedEl: HT
   if (canvasNode) {
     const hideBlocker = () => {
       const blocker = canvasNode.querySelector<HTMLElement>('.canvas-node-content-blocker');
-      if (blocker) blocker.style.display = 'none';
+      if (blocker) blocker.setCssStyles({ display: 'none' });
     };
     hideBlocker();
     const observer = new MutationObserver(hideBlocker);
@@ -244,7 +243,7 @@ export async function mountBlackboardEmbed(repo: IDrawingRepository, embedEl: HT
     // Drop editor focus before anything else so Obsidian's mobile bottom toolbar (the
     // Scribble trigger) never raises for a drawing stroke.
     suppressEditorFocus();
-    drawingContainer.style.touchAction = 'none';
+    drawingContainer.setCssStyles({ touchAction: 'none' });
     strokeActive = true;
 
     surfaceManager?.setActive(surface);
@@ -298,7 +297,7 @@ export async function mountBlackboardEmbed(repo: IDrawingRepository, embedEl: HT
   // guard no-opped and Scribble won. Suppress every touch over the embed/drawing surface;
   // the note still scrolls from outside the embed (accepted tradeoff). Pen draws via pointer
   // events, which still fire.
-  embedEl.style.padding = '0';
+  embedEl.setCssStyles({ padding: '0' });
   const blockScribble = (e: TouchEvent) => { e.preventDefault(); };
   embedEl.addEventListener('touchstart', blockScribble, { passive: false });
   embedEl.addEventListener('touchmove', blockScribble, { passive: false });

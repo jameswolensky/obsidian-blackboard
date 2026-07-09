@@ -263,6 +263,17 @@
   display: block;
 }
 
+/* Invisible probe used to measure env(safe-area-inset-bottom) (GlobalToolbar.measureSafeBottom). */
+.blackboard-safe-area-probe {
+  position: fixed;
+  left: 0;
+  bottom: 0;
+  width: 0;
+  height: env(safe-area-inset-bottom);
+  visibility: hidden;
+  pointer-events: none;
+}
+
 .blackboard-global-toolbar {
   position: fixed;
   z-index: 1000;

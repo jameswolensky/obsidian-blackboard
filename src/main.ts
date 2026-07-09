@@ -230,10 +230,12 @@ export default class BlackboardPlugin extends Plugin {
       const avail = embedEl.parentElement?.clientWidth || embedEl.clientWidth || file.width || 0;
       const fit = fitSavedEmbedSize(file.width || 0, file.height || 0, avail);
       if (!fit) return;
-      embedEl.style.width = fit.width + 'px';
-      embedEl.style.height = fit.height + 'px';
-      embedEl.style.marginLeft = 'auto';
-      embedEl.style.marginRight = 'auto';
+      embedEl.setCssStyles({
+        width: fit.width + 'px',
+        height: fit.height + 'px',
+        marginLeft: 'auto',
+        marginRight: 'auto',
+      });
     } catch {
       // Couldn't read the file; leave the embed at its default size.
     }
