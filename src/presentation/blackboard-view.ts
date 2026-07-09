@@ -8,6 +8,10 @@ import type { IDrawingRepository } from '../domain/ports';
 import type { DocumentStore, SharedDocumentHandle } from '../application/document-store';
 import { eraseAtPoint } from '../application/eraser-service';
 import { inputDebugEnabled, inputDebugLog } from '../dev/input-debug';
+
+// Replaced by esbuild `define` (true in dev builds, false in production, where the
+// branch and the src/dev module behind it are eliminated from the bundle).
+declare const __DEV_BUILD__: boolean;
 import type { SurfaceManager } from './surface-manager';
 import { engineSurface, type DrawingSurface } from './drawing-surface';
 

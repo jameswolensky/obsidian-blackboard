@@ -14,6 +14,9 @@
  */
 import { requestUrl, type Plugin } from 'obsidian';
 
+// Replaced by esbuild `define`; see esbuild.config.mjs.
+declare const __DEV_SERVER__: string;
+
 const AUDIT_STYLE_PROPS = [
   'width',
   'height',

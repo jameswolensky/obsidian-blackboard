@@ -15,6 +15,10 @@ import { DocumentStore } from './application/document-store';
 import { GlobalToolbar } from './presentation/global-toolbar';
 import { parseEmbedSize, fitSavedEmbedSize } from './presentation/embed-size';
 
+// Replaced by esbuild `define` (true in dev builds, false in production, where the
+// branch and the src/dev module behind it are eliminated from the bundle).
+declare const __DEV_BUILD__: boolean;
+
 export default class BlackboardPlugin extends Plugin {
   settings: PluginSettings = DEFAULT_PLUGIN_SETTINGS;
   private repo!: IDrawingRepository;
