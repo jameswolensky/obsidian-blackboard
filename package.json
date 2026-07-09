@@ -16,7 +16,8 @@
     "postversion": "git push --follow-tags origin HEAD",
     "release:patch": "npm version patch -m \"release: %s\"",
     "release:minor": "npm version minor -m \"release: %s\"",
-    "release:major": "npm version major -m \"release: %s\""
+    "release:major": "npm version major -m \"release: %s\"",
+    "scan": "eslint src; echo CSS_IMPORTANT_COUNT=$(grep -c '!important' styles.css)"
   },
   "keywords": [
     "obsidian",
