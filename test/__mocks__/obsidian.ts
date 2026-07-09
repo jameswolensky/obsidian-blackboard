@@ -39,9 +39,22 @@ export class PluginSettingTab {
 }
 export class Setting {
   static _lastOnChangeCallbacks: Array<(value: any) => void> = [];
-  constructor(_containerEl: HTMLElement) {}
-  setName(_name: string) { return this; }
+  settingEl: HTMLElement;
+  nameEl: HTMLElement;
+  // Mirror real Obsidian: each Setting appends a .setting-item div to the container;
+  // setHeading() marks it as a section heading (what the review guideline requires
+  // instead of manual <h2> elements).
+  constructor(containerEl: HTMLElement) {
+    this.settingEl = document.createElement('div');
+    this.settingEl.className = 'setting-item';
+    this.nameEl = document.createElement('div');
+    this.nameEl.className = 'setting-item-name';
+    this.settingEl.appendChild(this.nameEl);
+    containerEl.appendChild(this.settingEl);
+  }
+  setName(name: string) { this.nameEl.textContent = name; return this; }
   setDesc(_desc: string) { return this; }
+  setHeading() { this.settingEl.classList.add('setting-item-heading'); return this; }
   addText(cb: any) {
     let onChangeCb: any;
     cb({ setValue: () => ({ onChange: (fn: any) => { onChangeCb = fn; Setting._lastOnChangeCallbacks.push(fn); } }) });

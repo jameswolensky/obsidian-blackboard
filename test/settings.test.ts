@@ -24,14 +24,16 @@ describe('BlackboardSettingTab', () => {
     expect(() => tab.display()).not.toThrow();
   });
 
-  it('creates the File Storage, Toolbar palette, and Toolbar headings', () => {
+  it('creates the section headings via setHeading (no manual h2 elements)', () => {
     const tab = createTab();
 
     tab.display();
 
-    const headings = tab.containerEl.querySelectorAll('h2');
+    // Review guideline: headings come from new Setting(...).setHeading(), sentence case.
+    expect(tab.containerEl.querySelectorAll('h2')).toHaveLength(0);
+    const headings = tab.containerEl.querySelectorAll('.setting-item-heading .setting-item-name');
     const texts = Array.from(headings).map((h) => h.textContent);
-    expect(texts).toEqual(['File Storage', 'Toolbar palette', 'Toolbar']);
+    expect(texts).toEqual(['File storage', 'Toolbar palette', 'Toolbar']);
   });
 
   it('renders eight palette color controls in its own section, not under Drawing Defaults', () => {

@@ -13,7 +13,7 @@ export class BlackboardSettingTab extends PluginSettingTab {
     const { containerEl } = this;
     containerEl.empty();
 
-    containerEl.createEl('h2', { text: 'File Storage' });
+    new Setting(containerEl).setName('File storage').setHeading();
 
     new Setting(containerEl)
       .setName('Drawing folder')
@@ -64,7 +64,7 @@ export class BlackboardSettingTab extends PluginSettingTab {
 
     // Toolbar palette: its own dedicated section. The eight controls map 1:1 to the
     // color-popover swatches, in display order (left-to-right, top-to-bottom).
-    containerEl.createEl('h2', { text: 'Toolbar palette' });
+    new Setting(containerEl).setName('Toolbar palette').setHeading();
     for (let i = 0; i < this.plugin.settings.paletteColors.length; i++) {
       new Setting(containerEl)
         .setName(`Color ${i + 1}`)
@@ -78,7 +78,7 @@ export class BlackboardSettingTab extends PluginSettingTab {
     }
 
     // Toolbar behaviour (distinct from the palette colors above).
-    containerEl.createEl('h2', { text: 'Toolbar' });
+    new Setting(containerEl).setName('Toolbar').setHeading();
 
     new Setting(containerEl)
       .setName('Show toolbar pill')
