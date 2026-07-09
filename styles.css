@@ -47,184 +47,6 @@
   user-select: none;
 }
 
-.blackboard-toolbar {
-  display: flex;
-  flex-direction: row;
-  flex-wrap: nowrap;
-  align-items: center;
-  gap: 4px;
-  padding: 4px 8px;
-  background: var(--background-secondary);
-  border: 1px solid var(--background-modifier-border);
-  border-radius: var(--radius-m);
-  z-index: 10;
-  white-space: nowrap;
-  max-width: 100%;
-  box-sizing: border-box;
-  /* Keep a single row on narrow embeds (e.g. iPad canvas nodes): scroll horizontally
-     instead of wrapping to multiple rows or clipping controls off-screen. */
-  overflow-x: auto;
-  overflow-y: hidden;
-  scrollbar-width: none;
-}
-
-.blackboard-toolbar::-webkit-scrollbar {
-  display: none;
-}
-
-.blackboard-toolbar .toolbar-group {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  gap: 2px;
-  flex-shrink: 0;
-}
-
-.blackboard-toolbar .toolbar-separator {
-  width: 1px;
-  height: 20px;
-  background: var(--background-modifier-border);
-  margin: 0 2px;
-  flex-shrink: 0;
-}
-
-.blackboard-toolbar button {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  min-width: 28px;
-  min-height: 28px;
-  padding: 0;
-  border: none;
-  border-radius: var(--radius-s);
-  background: transparent;
-  color: var(--text-muted);
-  cursor: pointer;
-  flex-shrink: 0;
-}
-
-.blackboard-toolbar button:hover {
-  background: var(--background-modifier-hover);
-}
-
-.blackboard-toolbar button.active {
-  color: var(--text-accent);
-  background: var(--background-modifier-hover);
-}
-
-.blackboard-toolbar button svg {
-  width: 16px;
-  height: 16px;
-}
-
-.blackboard-color-swatch {
-  width: 18px !important;
-  height: 18px !important;
-  min-width: 18px !important;
-  min-height: 18px !important;
-  border-radius: 50% !important;
-  border: 2px solid var(--background-modifier-border) !important;
-  padding: 0 !important;
-  cursor: pointer;
-  flex-shrink: 0;
-}
-
-.blackboard-color-swatch:hover {
-  border-color: var(--text-muted) !important;
-}
-
-.blackboard-color-swatch.active {
-  border-color: var(--text-accent) !important;
-}
-
-/* Range slider: the element is tall enough to be a real touch target; the visible
-   track is a thin line drawn via the runnable-track, and the thumb is centered on it
-   with margin-top = (trackHeight - thumbHeight) / 2. */
-.blackboard-size-slider {
-  width: 56px !important;
-  max-width: 56px !important;
-  flex-shrink: 0;
-  height: 16px !important;
-  -webkit-appearance: none !important;
-  appearance: none !important;
-  background: transparent !important;
-  outline: none !important;
-  padding: 0 !important;
-  margin: 0 4px !important;
-  border: none !important;
-}
-
-.blackboard-size-slider::-webkit-slider-runnable-track {
-  height: 4px !important;
-  border-radius: 2px !important;
-  background: var(--background-modifier-border) !important;
-  border: none !important;
-}
-
-.blackboard-size-slider::-webkit-slider-thumb {
-  -webkit-appearance: none !important;
-  appearance: none !important;
-  width: 12px !important;
-  height: 12px !important;
-  border-radius: 50% !important;
-  background: var(--text-normal) !important;
-  cursor: pointer !important;
-  margin-top: -4px !important;
-  border: none !important;
-}
-
-.blackboard-size-slider::-moz-range-track {
-  height: 4px !important;
-  border-radius: 2px !important;
-  background: var(--background-modifier-border) !important;
-  border: none !important;
-}
-
-.blackboard-size-slider::-moz-range-thumb {
-  width: 12px !important;
-  height: 12px !important;
-  border-radius: 50% !important;
-  background: var(--text-normal) !important;
-  cursor: pointer !important;
-  border: none !important;
-}
-
-.blackboard-color-picker-btn {
-  background: conic-gradient(red, yellow, lime, aqua, blue, magenta, red) !important;
-}
-
-.blackboard-toolbar.compact {
-  padding: 3px 6px;
-  gap: 3px;
-}
-
-.blackboard-toolbar.compact button {
-  width: 24px;
-  height: 24px;
-  min-width: 24px;
-  min-height: 24px;
-}
-
-.blackboard-toolbar.compact button svg {
-  width: 14px;
-  height: 14px;
-}
-
-.blackboard-toolbar.compact .blackboard-color-swatch {
-  width: 14px !important;
-  height: 14px !important;
-  min-width: 14px !important;
-  min-height: 14px !important;
-}
-
-
-
-.blackboard-toolbar.compact .toolbar-separator {
-  height: 16px;
-}
-
 .blackboard-embedded-drawing {
   position: absolute;
   top: 0;
@@ -232,14 +54,6 @@
   width: 100%;
   height: 100%;
   overflow: hidden;
-  z-index: 10;
-}
-
-.blackboard-embedded-drawing .blackboard-toolbar {
-  position: absolute;
-  bottom: 8px;
-  left: 50%;
-  transform: translateX(-50%);
   z-index: 10;
 }
 
@@ -408,37 +222,40 @@
 /* On the accent fill, the inner dot switches to the on-accent colour to stay visible. */
 .blackboard-gt-size-dot.active .blackboard-gt-size-dot-inner { background: var(--text-on-accent); }
 
-/* iPad ONLY: Obsidian's `.is-tablet button:not(.clickable-icon)` rule (specificity
-   0,2,1) injects padding into every <button>, beating our class selectors (0,2,0)
-   and turning the round controls into ovals with their icons clipped to nothing.
-   It's gated on `.is-tablet`, which is why desktop is unaffected. Force our own
-   geometry back. Root cause verified in real iPad WebKit via test/webkit. */
-.blackboard-global-toolbar .blackboard-gt-btn,
-.blackboard-gt-swatch,
-.blackboard-gt-colorwell,
-.blackboard-gt-size-dot {
-  padding: 0 !important;
-  box-sizing: border-box !important;
+/* iPad cascade shield: Obsidian's `.is-tablet button:not(.clickable-icon)` rule
+   (specificity 0,2,1) injects padding into every <button>, turning the round controls
+   into ovals with their icons clipped to nothing — iPad only, since it's gated on
+   `.is-tablet`. Outrank it by specificity alone: each tripled-class selector below is
+   (0,3,0) plus the element, which beats (0,2,1) on specificity alone, independent of
+   theme/app stylesheet load order. The colorwell carries both the swatch and colorwell
+   classes, so its rule must stay AFTER the swatch rule (equal specificity, order wins).
+   Root cause and this replacement verified in real iPad WebKit via test/webkit. */
+button.blackboard-gt-btn.blackboard-gt-btn.blackboard-gt-btn,
+button.blackboard-gt-swatch.blackboard-gt-swatch.blackboard-gt-swatch,
+button.blackboard-gt-colorwell.blackboard-gt-colorwell.blackboard-gt-colorwell,
+button.blackboard-gt-size-dot.blackboard-gt-size-dot.blackboard-gt-size-dot {
+  padding: 0;
+  box-sizing: border-box;
 }
-.blackboard-global-toolbar .blackboard-gt-btn {
-  width: clamp(34px, 7vw, 42px) !important;
-  height: clamp(34px, 7vw, 42px) !important;
-  min-width: clamp(34px, 7vw, 42px) !important;
+button.blackboard-gt-btn.blackboard-gt-btn.blackboard-gt-btn {
+  width: clamp(34px, 7vw, 42px);
+  height: clamp(34px, 7vw, 42px);
+  min-width: clamp(34px, 7vw, 42px);
 }
-.blackboard-gt-swatch {
-  width: 28px !important;
-  height: 28px !important;
-  min-width: 28px !important;
+button.blackboard-gt-swatch.blackboard-gt-swatch.blackboard-gt-swatch {
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
 }
-.blackboard-gt-colorwell {
-  width: clamp(30px, 6.5vw, 36px) !important;
-  height: clamp(30px, 6.5vw, 36px) !important;
-  min-width: clamp(30px, 6.5vw, 36px) !important;
+button.blackboard-gt-colorwell.blackboard-gt-colorwell.blackboard-gt-colorwell {
+  width: clamp(30px, 6.5vw, 36px);
+  height: clamp(30px, 6.5vw, 36px);
+  min-width: clamp(30px, 6.5vw, 36px);
 }
-.blackboard-gt-size-dot {
-  width: 32px !important;
-  height: 32px !important;
-  min-width: 32px !important;
+button.blackboard-gt-size-dot.blackboard-gt-size-dot.blackboard-gt-size-dot {
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
 }
 
 .blackboard-global-toolbar-pill {
