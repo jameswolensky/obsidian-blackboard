@@ -31,13 +31,18 @@ createServer((req, res) => {
       res.writeHead(200, { "content-type": "application/octet-stream" });
       return res.end(readFileSync(join(ROOT, ARTIFACTS[p.slice(7)])));
     }
-    if (req.method === "GET" && p.startsWith("/webkit/")) {
-      // Serve the Tier 2 harness from the same origin so its in-page fetch()
-      // verdict POST needs no CORS.
-      const rel = p.slice(8).replace(/\.\./g, "");
-      const type = rel.endsWith(".css") ? "text/css" : rel.endsWith(".mjs") || rel.endsWith(".js") ? "text/javascript" : "text/html";
-      res.writeHead(200, { "content-type": type });
-      return res.end(readFileSync(join(ROOT, "test/webkit", rel)));
+    // Serve the Tier 2 harness (and the stylesheet paths it links) from the same
+    // origin so its in-page fetch() verdict POST needs no CORS. Path layout matches
+    // the historical python http.server (repo root).
+    if (req.method === "GET" && (p.startsWith("/test/webkit/") || p === "/styles.css")) {
+      const rel = p.replace(/\.\./g, "").replace(/^\//, "");
+      const type = rel.endsWith(".css")
+        ? "text/css"
+        : rel.endsWith(".mjs") || rel.endsWith(".js")
+          ? "text/javascript"
+          : "text/html";
+      res.writeHead(200, { "content-type": type, "cache-control": "no-store" });
+      return res.end(readFileSync(join(ROOT, rel)));
     }
     if (req.method === "POST" && (p === "/audit" || p === "/webkit-verdict")) {
       let body = "";
