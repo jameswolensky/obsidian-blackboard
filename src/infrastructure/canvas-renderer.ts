@@ -72,7 +72,7 @@ export class DrawingEngine {
   loadStrokes(strokes: Stroke[]): void {
     this.strokeManager.reset();
     for (const stroke of strokes) {
-      this.strokeManager.strokes.push(JSON.parse(JSON.stringify(stroke)));
+      this.strokeManager.strokes.push(JSON.parse(JSON.stringify(stroke)) as Stroke);
     }
     this.staticDirty = true;
   }

@@ -31,7 +31,7 @@ export function deserialize(data: string): { file: BlackboardFile; warnings: str
 
   const version =
     typeof parsed === 'object' && parsed !== null && 'version' in parsed
-      ? (parsed as { version: unknown }).version
+      ? parsed.version
       : undefined;
   if (typeof version === 'number' && version > 3) {
     warnings.push('File version ' + String(version) + ' is newer than supported version 3');

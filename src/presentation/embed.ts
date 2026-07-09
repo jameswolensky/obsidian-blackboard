@@ -1,5 +1,5 @@
 import type { IDrawingRepository } from '../domain/ports';
-import type { BlackboardFile, PluginSettings } from '../domain/entities';
+import type { BlackboardFile, PluginSettings, Stroke } from '../domain/entities';
 import { DrawingEngine } from '../infrastructure/canvas-renderer';
 import type { ToolManager } from '../domain/tool-manager';
 import { eraseAtPoint } from '../application/eraser-service';
@@ -7,6 +7,11 @@ import { inputDebugEnabled, inputDebugLog } from './input-debug';
 import type { SurfaceManager } from './surface-manager';
 import type { DocumentStore, SharedDocumentHandle } from '../application/document-store';
 import { engineSurface } from './drawing-surface';
+
+// Tracked document/observer teardown callbacks. Handlers are registered with concrete event
+// types (PointerEvent, TouchEvent, …) and observer entries are invoked with null; method
+// syntax keeps the parameter bivariant so both stay assignable.
+type DocListenerFn = { fn(e: Event | null): void }['fn'];
 
 function dbgTarget(t: EventTarget | null): string {
   const el = t as HTMLElement | null;
@@ -73,7 +78,7 @@ export async function mountBlackboardEmbed(repo: IDrawingRepository, embedEl: HT
   embedEl.addEventListener('click', (e) => { e.stopPropagation(); e.stopImmediatePropagation(); }, true);
   embedEl.addEventListener('dblclick', (e) => { e.stopPropagation(); e.stopImmediatePropagation(); }, true);
 
-  const docListeners: Array<{ type: string; fn: (e: any) => void; capture: boolean }> = [];
+  const docListeners: Array<{ type: string; fn: DocListenerFn; capture: boolean }> = [];
 
   let canvasNode: HTMLElement | null = null;
   let el: HTMLElement | null = embedEl;
@@ -170,7 +175,7 @@ export async function mountBlackboardEmbed(repo: IDrawingRepository, embedEl: HT
         version: 3,
         width: b.width || 800,
         height: b.height || 600,
-        strokes: JSON.parse(JSON.stringify(engine.strokeManager.strokes)),
+        strokes: JSON.parse(JSON.stringify(engine.strokeManager.strokes)) as Stroke[],
         background: { color: 'transparent' },
         contentBounds: (b.width > 0 && b.height > 0) ? b : undefined,
       };

@@ -4,6 +4,7 @@ import type { DrawingSurface, ToolName } from './drawing-surface';
 import { setToolbarIcon, setSizeDotIcon, type IconName } from './toolbar-icons';
 import type { PluginSettings } from '../domain/entities';
 import { DEFAULT_PLUGIN_SETTINGS } from '../domain/entities';
+import type { IroColorPickerLike, IroModuleLike } from '../types/obsidian-internals';
 
 const TOOLS: Array<{ name: ToolName; icon: IconName; label: string }> = [
   { name: 'pen', icon: 'pen', label: 'Pen' },
@@ -32,7 +33,7 @@ export class GlobalToolbar {
   private sizeRow!: HTMLElement;
   private sizeBtn!: HTMLElement;
   // iro.ColorPicker — typed loosely because iro ships no strict types we can import
-  private picker: any = null;
+  private picker: IroColorPickerLike | null = null;
   private surface: DrawingSurface | null = null;
   private anchorEl: HTMLElement | null = null;
   // Anchor for the persistent pill on a Markdown/Canvas view that has no active surface yet.
@@ -198,7 +199,7 @@ export class GlobalToolbar {
 
     const wheel = this.colorPopover.createDiv({ cls: 'blackboard-gt-wheel' });
     try {
-      const I = iro as any;
+      const I = iro as IroModuleLike;
       this.picker = I.ColorPicker(wheel, {
         width: 150,
         color: '#ffffff',

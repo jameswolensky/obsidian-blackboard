@@ -7,6 +7,9 @@ import { mountBlackboardEmbed } from './embed';
 import type { SurfaceManager } from './surface-manager';
 import type { ToolManager } from '../domain/tool-manager';
 import type { DocumentStore } from '../application/document-store';
+// Aliased locally: esbuild's minified-identifier frequency analysis reads type-name
+// characters, and the capital V in CanvasViewLike perturbs the release bundle's mangling.
+import type { CanvasViewLike as CanvasHostLike } from '../types/obsidian-internals';
 
 /**
  * The insert-drawing commands target a Markdown/Canvas host that can receive an embed. When the
@@ -47,13 +50,13 @@ export async function embedDrawingIntoHost(
   }
 
   const leaf = app.workspace.getMostRecentLeaf();
-  const view = (leaf as any)?.view as any;
+  const view = leaf?.view as CanvasHostLike | undefined;
   if (view?.canvas) {
     const selectedNodes = Array.from(view.canvas.selection || []);
-    const textNode = selectedNodes.find((n: any) => n.text !== undefined);
+    const textNode = selectedNodes.find((n) => n.text !== undefined);
     if (textNode) {
-      const currentText = (textNode as any).text || '';
-      (textNode as any).setText(currentText + (currentText ? '\n' : '') + `![[${name}]]`);
+      const currentText = textNode.text || '';
+      textNode.setText(currentText + (currentText ? '\n' : '') + `![[${name}]]`);
       view.canvas.requestSave();
     } else if (file instanceof TFile) {
       const vp = view.canvas.getViewportBBox?.();
@@ -119,12 +122,12 @@ export function insertExistingDrawing(app: App, repo: IDrawingRepository, settin
 function patchCanvasFileNodes(repo: IDrawingRepository, app: App, settings: PluginSettings, surfaceManager?: SurfaceManager, toolManager?: ToolManager, store?: DocumentStore): void {
   const leaf = app.workspace.getMostRecentLeaf();
   if (!leaf) return;
-  const view = (leaf as any)?.view as any;
+  const view = leaf?.view as CanvasHostLike | undefined;
   if (!view?.canvas) return;
 
   for (const node of view.canvas.nodes.values()) {
     if (!node.file || node.file.extension !== FILE_EXTENSION) continue;
-    const contentEl = node.contentEl as HTMLElement;
+    const contentEl = node.contentEl;
     if (!contentEl || contentEl.dataset.bbMounted === 'true') continue;
 
     const hasPreview = contentEl.querySelector('.blackboard-preview-img') || contentEl.querySelector('.blackboard-placeholder');
@@ -147,9 +150,9 @@ export function patchCanvas(app: App, plugin: Plugin, settings: PluginSettings, 
   plugin.registerEvent(app.workspace.on('layout-change', () => {
     const leaf = app.workspace.getMostRecentLeaf();
     if (!leaf) return;
-    const view = leaf.view as any;
+    const view = leaf.view as CanvasHostLike;
     if (!view?.canvas?.cardMenuEl) return;
-    const menuEl = view.canvas.cardMenuEl as HTMLElement;
+    const menuEl = view.canvas.cardMenuEl;
     if (menuEl.querySelector('#blackboard-add-drawing')) return;
 
     const btn = createDiv();
@@ -171,7 +174,7 @@ export function patchCanvas(app: App, plugin: Plugin, settings: PluginSettings, 
   plugin.registerEvent(app.workspace.on('layout-change', () => {
     const leaf = app.workspace.getMostRecentLeaf();
     if (!leaf) return;
-    const view = leaf.view as any;
+    const view = leaf.view as CanvasHostLike;
     if (!view?.canvas) return;
     const el = view.contentEl;
     if (el && !el.dataset.bbCanvasObserved) {

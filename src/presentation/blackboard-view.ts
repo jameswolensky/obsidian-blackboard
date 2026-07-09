@@ -1,5 +1,5 @@
 import { TextFileView, WorkspaceLeaf } from 'obsidian';
-import type { BlackboardFile, PluginSettings } from '../domain/entities';
+import type { BlackboardFile, PluginSettings, Stroke } from '../domain/entities';
 import { FILE_EXTENSION } from '../domain/entities';
 import { serialize, deserialize } from '../application/file-format';
 import { DrawingEngine } from '../infrastructure/canvas-renderer';
@@ -22,6 +22,11 @@ function dbgTarget(t: EventTarget | null): string {
 export const VIEW_TYPE = 'blackboard-view';
 export { FILE_EXTENSION };
 
+// Tracked document/observer teardown callbacks. Handlers are registered with concrete event
+// types (PointerEvent, KeyboardEvent, …) and observer entries are invoked with null; method
+// syntax keeps the parameter bivariant so both stay assignable.
+type DocListenerFn = { fn(e: Event | null): void }['fn'];
+
 export class BlackboardView extends TextFileView {
   private engine: DrawingEngine | null = null;
   private drawingContainer: HTMLElement | null = null;
@@ -38,7 +43,7 @@ export class BlackboardView extends TextFileView {
   private attaching: boolean = false;
   private surface: DrawingSurface | null = null;
   private isEmbedded: boolean = false;
-  private docListeners: Array<{ type: string; fn: (e: any) => void; capture: boolean }> = [];
+  private docListeners: Array<{ type: string; fn: DocListenerFn; capture: boolean }> = [];
   private strokeActive: boolean = false;
   // Standalone view only: the surface fills the pane and is an infinite pan + zoom canvas
   // over the engine's view transform. On open (and on resize) the drawing is fitted into
@@ -146,7 +151,7 @@ export class BlackboardView extends TextFileView {
     // Parse file dimensions first
     let fileWidth = 800;
     let fileHeight = 600;
-    let fileStrokes: any[] = [];
+    let fileStrokes: Stroke[] = [];
     if (this.fileData) {
       try {
         const result = deserialize(this.fileData);
@@ -231,7 +236,7 @@ export class BlackboardView extends TextFileView {
       version: 3,
       width: hasContent ? Math.round(cb.width) : 800,
       height: hasContent ? Math.round(cb.height) : 600,
-      strokes: JSON.parse(JSON.stringify(this.engine!.strokeManager.strokes)),
+      strokes: JSON.parse(JSON.stringify(this.engine!.strokeManager.strokes)) as Stroke[],
       background: { color: 'transparent' },
       contentBounds: hasContent ? cb : undefined,
     };

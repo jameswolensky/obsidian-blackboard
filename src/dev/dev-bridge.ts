@@ -76,7 +76,7 @@ export function collectAudit(
     const cs = win.getComputedStyle(el);
     const svg = el.querySelector('svg');
     const style: Record<string, string> = {};
-    for (const p of AUDIT_STYLE_PROPS) style[p] = String(cs[p as keyof CSSStyleDeclaration] ?? '');
+    for (const p of AUDIT_STYLE_PROPS) style[p] = String(cs[p] ?? '');
     controls.push({
       classes: Array.from(el.classList),
       active: el.classList.contains('active'),

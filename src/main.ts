@@ -240,7 +240,7 @@ export default class BlackboardPlugin extends Plugin {
   }
 
   async loadSettings(): Promise<void> {
-    this.settings = Object.assign({}, DEFAULT_PLUGIN_SETTINGS, await this.loadData());
+    this.settings = Object.assign({}, DEFAULT_PLUGIN_SETTINGS, await this.loadData() as Partial<PluginSettings>);
     this.validateSettings();
   }
 
