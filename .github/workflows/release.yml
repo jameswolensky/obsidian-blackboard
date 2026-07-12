@@ -38,7 +38,7 @@ jobs:
         run: npm run check
 
       - name: Attest build provenance for release assets
-        uses: actions/attest-build-provenance@v2
+        uses: actions/attest-build-provenance@v4
         with:
           subject-path: |
             main.js
