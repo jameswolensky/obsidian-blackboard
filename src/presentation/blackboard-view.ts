@@ -117,6 +117,8 @@ export class BlackboardView extends TextFileView {
       : 'blackboard-drawing-container blackboard-standalone-drawing';
     this.drawingContainer = container.createDiv({ cls: containerCls });
     this.drawingContainer.style.touchAction = this.isEmbedded ? 'pan-x pan-y' : 'none';
+    // Board background (issue #13): paint the surface (whiteboard/blackboard/etc.).
+    this.drawingContainer.style.backgroundColor = this.settings.boardBackground;
 
     this.drawingContainer.addEventListener('pointerdown', (e) => {
       if (e.pointerType === 'touch') {

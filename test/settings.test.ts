@@ -33,7 +33,7 @@ describe('BlackboardSettingTab', () => {
     expect(tab.containerEl.querySelectorAll('h2')).toHaveLength(0);
     const headings = tab.containerEl.querySelectorAll('.setting-item-heading .setting-item-name');
     const texts = Array.from(headings).map((h) => h.textContent);
-    expect(texts).toEqual(['File storage', 'Toolbar palette', 'Toolbar']);
+    expect(texts).toEqual(['File storage', 'Appearance', 'Toolbar palette', 'Toolbar']);
   });
 
   it('renders eight palette color controls in its own section, not under Drawing Defaults', () => {
@@ -42,8 +42,8 @@ describe('BlackboardSettingTab', () => {
 
     tab.display();
 
-    // Eight color pickers, one per palette entry.
-    expect(settingSpy).toHaveBeenCalledTimes(8);
+    // Eight palette color pickers + one Board background picker.
+    expect(settingSpy).toHaveBeenCalledTimes(9);
     // No Drawing Defaults section exists at all.
     const texts = Array.from(tab.containerEl.querySelectorAll('h2')).map((h) => h.textContent);
     expect(texts).not.toContain('Drawing Defaults');
@@ -61,8 +61,9 @@ describe('BlackboardSettingTab', () => {
 
     const callbacks = (Setting as any)._lastOnChangeCallbacks;
     // File Storage callbacks first: drawingFolder(0), newFileLocation(1), autoExportSvg(2);
-    // autoExportSvg is false by default so svgExportPath is absent. Palette pickers follow.
-    const paletteStart = 3;
+    // autoExportSvg is false by default so svgExportPath is absent. Then Appearance's
+    // boardBackground(3). Palette pickers follow, starting at 4.
+    const paletteStart = 4;
     await callbacks[paletteStart + 2]('#abcdef');
 
     expect(plugin.settings.paletteColors[2]).toBe('#abcdef');
@@ -292,7 +293,23 @@ describe('getSettingDefinitions (Obsidian 1.13+ settings search)', () => {
     expect(keys).toContain('autoExportSvg');
     expect(keys).toContain('svgExportPath');
     expect(keys).toContain('showToolbarPill');
+    expect(keys).toContain('boardBackground');
     for (let i = 0; i < 8; i++) expect(keys).toContain(`paletteColors.${i}`);
+  });
+
+  it('renders a Board background color control under Appearance (issue #13)', () => {
+    const tab = createTab();
+    const nameSpy = vi.spyOn(Setting.prototype, 'setName');
+    tab.display();
+    const names = nameSpy.mock.calls.map((c) => c[0]);
+    expect(names).toContain('Board background');
+  });
+
+  it('round-trips boardBackground through plugin settings', async () => {
+    const tab = createTab();
+    await tab.setControlValue('boardBackground', '#ffffff');
+    expect(tab.getControlValue('boardBackground')).toBe('#ffffff');
+    expect((tab as any).plugin.saveSettings).toHaveBeenCalled();
   });
 
   it('hides svgExportPath from search when auto-export is off', () => {

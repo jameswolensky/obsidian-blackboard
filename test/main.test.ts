@@ -45,7 +45,7 @@ vi.mock('../src/domain/entities', async (importOriginal) => {
   };
 });
 
-import BlackboardPlugin from '../src/main';
+import BlackboardPlugin, { isPillHostViewType } from '../src/main';
 import { TFile } from 'obsidian';
 import { patchCanvas, insertDrawingAtCursor, insertExistingDrawing } from '../src/presentation/canvas-integration';
 import { BlackboardView } from '../src/presentation/blackboard-view';
@@ -447,6 +447,36 @@ describe('BlackboardPlugin', () => {
         const tfile = Object.assign(new TFile(), { path: 'test.md', extension: 'md' });
         await deleteHandler(tfile);
       }
+    });
+  });
+
+  describe('isPillHostViewType (issue #9)', () => {
+    it('treats only Canvas as a no-surface pill host', () => {
+      expect(isPillHostViewType('canvas')).toBe(true);
+    });
+
+    it('does NOT treat Markdown as a pill host (no pill on plain notes)', () => {
+      expect(isPillHostViewType('markdown')).toBe(false);
+    });
+
+    it('does not treat other view types or undefined as a pill host', () => {
+      for (const t of ['graph', 'empty', 'blackboard-view', undefined]) {
+        expect(isPillHostViewType(t)).toBe(false);
+      }
+    });
+  });
+
+  describe('editor context-menu (issue #9 discoverability)', () => {
+    it('registers an editor-menu handler that adds an "Insert drawing" item', async () => {
+      const plugin = createPlugin();
+      await plugin.onload();
+      const editorMenuCall = plugin.app.workspace.on.mock.calls.find((c: any) => c[0] === 'editor-menu');
+      expect(editorMenuCall).toBeDefined();
+      const handler = editorMenuCall![1];
+      const added: string[] = [];
+      const menu = { addItem: (cb: any) => { cb({ setTitle: (t: string) => { added.push(t); return { setIcon: () => ({ onClick: () => {} }) }; } }); } };
+      handler(menu, {}, {});
+      expect(added).toContain('Insert drawing');
     });
   });
 });

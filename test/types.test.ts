@@ -10,6 +10,7 @@ describe('DEFAULT_PLUGIN_SETTINGS', () => {
       svgExportPath: '',
       paletteColors: ['#000000', '#ffffff', '#ff0000', '#0000ff', '#00ff00', '#ffff00', '#ffa500', '#800080'],
       showToolbarPill: true,
+      boardBackground: '#000000',
     });
   });
 

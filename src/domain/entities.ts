@@ -65,6 +65,12 @@ export interface PluginSettings {
    * always-present pill; false suppresses only that persistent no-surface pill.
    */
   showToolbarPill: boolean;
+  /**
+   * CSS color painted behind every drawing surface (standalone view, Markdown embed, and
+   * Canvas node). Default '#000000' keeps the classic blackboard; set '#ffffff' for a
+   * whiteboard, or any CSS color. Applies on-screen only — SVG export stays transparent.
+   */
+  boardBackground: string;
 }
 
 /** The eight color-popover shortcuts seeded by default, in display order. */
@@ -79,6 +85,7 @@ export const DEFAULT_PLUGIN_SETTINGS: PluginSettings = {
   svgExportPath: '',
   paletteColors: [...DEFAULT_PALETTE_COLORS],
   showToolbarPill: true,
+  boardBackground: '#000000',
 };
 
 const HEX6 = /^#[0-9a-fA-F]{6}$/;
@@ -156,6 +163,9 @@ export function validateSettings(settings: PluginSettings): PluginSettings {
   }
   if (typeof result.showToolbarPill !== 'boolean') {
     result.showToolbarPill = true;
+  }
+  if (typeof result.boardBackground !== 'string' || result.boardBackground === '') {
+    result.boardBackground = '#000000';
   }
   // Palette: a non-array or wrong-length value is reset wholesale; an eight-entry array
   // has only its invalid hex entries repaired in place to the default at that index.

@@ -19,6 +19,17 @@ import { parseEmbedSize, fitSavedEmbedSize } from './presentation/embed-size';
 // branch and the src/dev module behind it are eliminated from the bundle).
 declare const __DEV_BUILD__: boolean;
 
+/**
+ * Whether a view type should host the collapsed no-surface toolbar pill. Only Canvas
+ * qualifies: on Canvas, inserting a drawing node is a core action, so a persistent pill is a
+ * useful affordance. Markdown is deliberately excluded — a plain note has nothing to draw on,
+ * and a note that already embeds a drawing shows the embed's own auto-activated toolbar
+ * instead of a redundant pill (issue #9).
+ */
+export function isPillHostViewType(viewType: string | undefined): boolean {
+  return viewType === 'canvas';
+}
+
 export default class BlackboardPlugin extends Plugin {
   settings: PluginSettings = DEFAULT_PLUGIN_SETTINGS;
   private repo!: IDrawingRepository;
@@ -115,7 +126,27 @@ export default class BlackboardPlugin extends Plugin {
       },
     });
 
+    // Editor context-menu entry: with the no-surface pill gone from Markdown (issue #9), this
+    // keeps "insert a new drawing here" discoverable right where you are typing.
+    this.registerEvent(this.app.workspace.on('editor-menu', (menu) => {
+      menu.addItem((item) => {
+        item
+          .setTitle('Insert drawing')
+          .setIcon('pencil')
+          .onClick(async () => {
+            try {
+              await insertDrawingAtCursor(this.app, this.settings, this.createDrawingUseCase, this.repo, this.surfaceManager, this.toolManager, this.documentStore);
+            } catch {
+              // Best-effort: no host is a normal no-op.
+            }
+          });
+      });
+    }));
+
     this.addSettingTab(new BlackboardSettingTab(this.app, this));
+
+    // Paint any already-mounted surfaces with the saved board background (issue #13).
+    this.applyBoardBackground();
 
     patchCanvas(this.app, this, this.settings, this.repo, this.createDrawingUseCase, this.surfaceManager, this.toolManager, this.documentStore);
 
@@ -229,12 +260,12 @@ export default class BlackboardPlugin extends Plugin {
       | null
       | undefined;
     const contentEl = view?.contentEl ?? null;
-    // Persistent pill: on Markdown/Canvas views the toolbar shows a collapsed pill even with no
-    // drawing, so there is always an affordance to start. Set the host before activating so the
-    // no-surface fallback anchors correctly; other view types pass null and stay hidden.
+    // Persistent pill: only Canvas hosts the collapsed no-surface pill (issue #9). Set the host
+    // before activating so the no-surface fallback anchors correctly; Markdown and every other
+    // view type pass null — a Markdown note with an embed still shows the embed's own
+    // auto-activated toolbar via activateForView below.
     const viewType = view?.getViewType?.();
-    const isDrawingHost = viewType === 'markdown' || viewType === 'canvas';
-    this.globalToolbar?.setHost(isDrawingHost ? contentEl : null);
+    this.globalToolbar?.setHost(isPillHostViewType(viewType) ? contentEl : null);
     this.surfaceManager.activateForView(contentEl);
   }
 
@@ -270,6 +301,18 @@ export default class BlackboardPlugin extends Plugin {
     // Reflect the persistent-pill toggle immediately so a Markdown/Canvas host with no
     // active surface hides (or restores) the pill without needing a view switch.
     this.globalToolbar?.setPillEnabled(this.settings.showToolbarPill);
+    // Re-paint every mounted surface so a board-background change is live (issue #13).
+    this.applyBoardBackground();
+  }
+
+  /** Paint every mounted drawing surface with the configured board background (issue #13). */
+  private applyBoardBackground(): void {
+    const color = this.settings.boardBackground;
+    for (const el of Array.from(
+      activeDocument.querySelectorAll<HTMLElement>('.blackboard-drawing-container'),
+    )) {
+      el.style.backgroundColor = color;
+    }
   }
 
   private validateSettings(): void {

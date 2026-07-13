@@ -15,6 +15,7 @@ Blackboard adds a `.blackboard` file type with pressure-sensitive freehand drawi
 - **Palm rejection** — A stylus always draws; a resting palm or finger never does. Touch is reserved for navigation (see below), so your hand can rest on the screen while you write.
 - **Touch navigation** — In a standalone `.blackboard` view, one finger pans and two fingers pinch-zoom the infinite canvas; on desktop, hold **Space** and drag to pan. The stylus keeps drawing throughout.
 - **Pen, highlighter, eraser** — Solid pen strokes, semi-transparent highlighter, and a stroke eraser.
+- **Blackboard or whiteboard** — The board background is a single setting; keep it black or set it white (or any color) for a whiteboard.
 - **Shared floating toolbar** — One toolbar follows the active drawing. Tool, color, and brush size are global across every drawing on the page; it collapses to a corner pill.
 - **Per-embed sizing** — Each embed's display size is controlled by its host (the Canvas node's geometry, or the `|WxH` size on a Markdown embed), never baked into the file. Resizing scales the drawing without distortion; strokes are clipped to the node and never resize it.
 - **Automatic SVG export (optional)** — Export a vector `.svg` alongside each drawing on save.
@@ -106,8 +107,9 @@ Enable **Auto-export SVG** in settings to write a `.svg` next to each drawing wh
 | New file location | Fixed folder | Create new drawings in the fixed folder, or alongside the active file |
 | Auto-export SVG | Off | Write an `.svg` alongside each drawing on save |
 | SVG export path | (same folder) | Folder for exported SVGs (shown when Auto-export SVG is on) |
+| Board background | `#000000` | Color painted behind every drawing — set white for a whiteboard |
 | Toolbar palette (Color 1–8) | see below | The eight swatches in the toolbar color popover |
-| Show toolbar pill | On | Show the collapsed pen-icon pill on Markdown/Canvas pages with no active drawing |
+| Show toolbar pill | On | Show the collapsed pen-icon pill on Canvas with no active drawing |
 
 The default toolbar palette is `#000000`, `#ffffff`, `#ff0000`, `#0000ff`, `#00ff00`, `#ffff00`, `#ffa500`, `#800080`. Pen, highlighter, and eraser sizes and colors are chosen live from the floating toolbar; they are not separate settings.
 

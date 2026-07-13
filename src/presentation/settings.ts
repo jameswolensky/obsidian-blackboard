@@ -68,6 +68,18 @@ export class BlackboardSettingTab extends PluginSettingTab {
       },
       {
         type: 'group',
+        heading: 'Appearance',
+        items: [
+          {
+            name: 'Board background',
+            desc: 'Color painted behind every drawing (Canvas node, Markdown embed, and the ' +
+              'full-page view). Default black; set white for a whiteboard.',
+            control: { type: 'color', key: 'boardBackground' },
+          },
+        ],
+      },
+      {
+        type: 'group',
         heading: 'Toolbar palette',
         items: this.plugin.settings.paletteColors.map((_, i) => ({
           name: `Color ${i + 1}`,
@@ -82,8 +94,8 @@ export class BlackboardSettingTab extends PluginSettingTab {
           {
             name: 'Show toolbar pill',
             desc:
-              'Show the collapsed pen-icon pill on Markdown and Canvas pages with no active drawing, ' +
-              'so there is always a button to start drawing. Turn off to hide it until a drawing is active.',
+              'Show the collapsed pen-icon pill on Canvas with no active drawing, so there is ' +
+              'always a button to add one. Turn off to hide it until a drawing is active.',
             control: { type: 'toggle', key: 'showToolbarPill' },
           },
         ],
@@ -161,6 +173,22 @@ export class BlackboardSettingTab extends PluginSettingTab {
           }),
         );
     }
+
+    // Appearance: the board (surface) background, distinct from the pen palette below.
+    new Setting(containerEl).setName('Appearance').setHeading();
+
+    new Setting(containerEl)
+      .setName('Board background')
+      .setDesc(
+        'Color painted behind every drawing (Canvas node, Markdown embed, and the ' +
+          'full-page view). Default black; set white for a whiteboard.',
+      )
+      .addColorPicker((picker) =>
+        picker.setValue(this.plugin.settings.boardBackground).onChange(async (value) => {
+          this.plugin.settings.boardBackground = value;
+          await this.plugin.saveSettings();
+        }),
+      );
 
     // Toolbar palette: its own dedicated section. The eight controls map 1:1 to the
     // color-popover swatches, in display order (left-to-right, top-to-bottom).

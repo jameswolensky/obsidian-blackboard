@@ -49,6 +49,18 @@ describe('validateSettings', () => {
     expect(result.showToolbarPill).toBe(true);
   });
 
+  it('coerces a non-string or empty boardBackground back to #000000', () => {
+    for (const bad of [undefined, 0, null, '', {}] as any[]) {
+      const result = validateSettings(makeSettings({ boardBackground: bad }));
+      expect(result.boardBackground).toBe('#000000');
+    }
+  });
+
+  it('preserves a valid boardBackground color', () => {
+    const result = validateSettings(makeSettings({ boardBackground: '#ffffff' }));
+    expect(result.boardBackground).toBe('#ffffff');
+  });
+
   it('preserves valid drawingFolder', () => {
     const result = validateSettings(makeSettings({ drawingFolder: 'MyDrawings' }));
     expect(result.drawingFolder).toBe('MyDrawings');

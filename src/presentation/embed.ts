@@ -82,6 +82,8 @@ export async function mountBlackboardEmbed(repo: IDrawingRepository, embedEl: HT
   // Inline (not a class): position:relative must override .blackboard-embedded-drawing's
   // position:absolute for the flex-child layout used here.
   drawingContainer.setCssStyles({ position: 'relative', width: '100%', flex: '1', minHeight: '150px' });
+  // Board background (issue #13): paint the surface so a whiteboard/blackboard shows here too.
+  drawingContainer.style.backgroundColor = settings.boardBackground;
   embedEl.appendChild(drawingContainer);
 
   // Display size is measured from the drawing surface element (the same one the pointer

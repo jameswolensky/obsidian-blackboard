@@ -416,6 +416,14 @@ describe('mountBlackboardEmbed – always-live canvas', () => {
     expect(embedEl.querySelector('.blackboard-drawing-container')).not.toBeNull();
   });
 
+  it('paints the drawing container with the configured board background (issue #13)', async () => {
+    settings.boardBackground = '#ffffff';
+    cleanup = await mountBlackboardEmbed(repo, embedEl, filePath, settings);
+
+    const container = embedEl.querySelector('.blackboard-drawing-container') as HTMLElement;
+    expect(container.style.backgroundColor).toBe('rgb(255, 255, 255)');
+  });
+
   it('loads strokes from file into the engine', async () => {
     const stroke = { id: '1', tool: 'pen', color: '#fff', size: 2, opacity: 1, points: [[0, 0, 0.5]], hasPressure: false, timestamp: 0 };
     const fileData = makeFile({ width: 400, height: 300, strokes: [stroke] });
