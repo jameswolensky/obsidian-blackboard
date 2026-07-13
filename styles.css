@@ -120,6 +120,9 @@
   padding: 0;
   border: none;
   background: transparent;
+  /* Obsidian's native `button` box-shadow (--input-shadow) otherwise bleeds through the
+     reset above, drawing a rounded-box shadow around every flat toolbar button. */
+  box-shadow: none;
   /* Flat tool buttons (pen/highlighter/eraser/undo/redo/insert/collapse): a small
      radius, matching Obsidian's native controls. Only the color swatches and the
      rainbow color well (.blackboard-gt-swatch) stay circular. */
