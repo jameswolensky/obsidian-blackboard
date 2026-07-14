@@ -43,7 +43,7 @@
   },
   "devDependencies": {
     "@types/node": "^25.5.0",
-    "@vitest/coverage-v8": "^4.1.2",
+    "@vitest/coverage-v8": "^4.1.10",
     "@wdio/cli": "^9.29.1",
     "@wdio/local-runner": "^9.29.1",
     "@wdio/mocha-framework": "^9.29.1",
