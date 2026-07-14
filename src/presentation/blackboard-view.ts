@@ -45,6 +45,13 @@ export class BlackboardView extends TextFileView {
   // byte-identical and suppressed by the store's own-write guard (no save->modify->reload loop).
   private handle: SharedDocumentHandle | null = null;
   private attaching: boolean = false;
+  // True once the engine has been populated with this file's strokes and represents the live
+  // user state. Obsidian's TextFileView lifecycle can call clear() (which empties the engine)
+  // during teardown/reuse/mobile-suspend and then getViewData() to persist; rebuilding from
+  // the emptied engine would serialize a BLANK file and overwrite a real drawing (the iPad
+  // lock-screen data loss). While this is false, getViewData() returns the last loaded bytes
+  // instead of the empty engine, so a transient clear() can never blank the file on disk.
+  private contentLoaded: boolean = false;
   private surface: DrawingSurface | null = null;
   private isEmbedded: boolean = false;
   private docListeners: Array<{ type: string; fn: DocListenerFn; capture: boolean }> = [];
@@ -177,6 +184,8 @@ export class BlackboardView extends TextFileView {
     if (fileStrokes.length > 0) {
       this.engine.loadStrokes(fileStrokes);
     }
+    // The engine now mirrors this.fileData (empty or not), so getViewData() may rebuild from it.
+    this.contentLoaded = true;
 
     if (this.isEmbedded) {
       this.drawingContainer.style.width = fileWidth + 'px';
@@ -284,7 +293,12 @@ export class BlackboardView extends TextFileView {
     // width/height cache the content-bounds size (recomputable from strokes); embeds use
     // them to render a drawing at its natural size. Built via buildFile() so the bytes match
     // what the store commits, keeping the own-write guard valid when the store is active.
-    if (this.engine) this.fileData = serialize(this.buildFile());
+    //
+    // Only rebuild from the engine when it actually holds the loaded drawing. After a
+    // teardown/suspend clear() the engine is empty but the file still has strokes; rebuilding
+    // then would return a blank drawing and let Obsidian overwrite the file (data loss). In
+    // that state we return the last loaded bytes unchanged.
+    if (this.engine && this.contentLoaded) this.fileData = serialize(this.buildFile());
     return this.fileData;
   }
 
@@ -295,6 +309,8 @@ export class BlackboardView extends TextFileView {
       try {
         const result = deserialize(data);
         this.engine.loadStrokes(result.file.strokes);
+        // The engine now mirrors the file: getViewData() may rebuild from it again.
+        this.contentLoaded = true;
         if (this.isEmbedded) {
           this.engine.setCanvasSize(result.file.width, result.file.height);
           if (this.drawingContainer) {
@@ -316,6 +332,9 @@ export class BlackboardView extends TextFileView {
 
   clear(): void {
     if (this.engine) this.engine.strokeManager.reset();
+    // The engine no longer holds the file's strokes; getViewData() must fall back to the last
+    // loaded bytes rather than serialize this empty engine over a real drawing (data loss).
+    this.contentLoaded = false;
   }
 
   async onClose(): Promise<void> {

@@ -450,6 +450,32 @@ describe('BlackboardPlugin', () => {
     });
   });
 
+  describe('flush-on-suspend (iPad lock-screen data loss)', () => {
+    it('registers a visibilitychange handler that flushes pending saves when hidden', async () => {
+      const plugin = createPlugin();
+      await plugin.onload();
+      const spy = vi.spyOn((plugin as any).documentStore, 'flushAll');
+
+      const calls = (plugin.registerDomEvent as any).mock.calls as any[];
+      const vis = calls.find((c) => c[1] === 'visibilitychange')
+      const hide = calls.find((c) => c[1] === 'pagehide')
+      expect(vis).toBeDefined();
+      expect(hide).toBeDefined();
+
+      // pagehide flushes unconditionally.
+      hide![2]();
+      expect(spy).toHaveBeenCalledTimes(1);
+
+      // visibilitychange only flushes when the document is hidden.
+      Object.defineProperty(document, 'hidden', { configurable: true, get: () => false });
+      vis![2]();
+      expect(spy).toHaveBeenCalledTimes(1);
+      Object.defineProperty(document, 'hidden', { configurable: true, get: () => true });
+      vis![2]();
+      expect(spy).toHaveBeenCalledTimes(2);
+    });
+  });
+
   describe('isPillHostViewType (issue #9)', () => {
     it('treats only Canvas as a no-surface pill host', () => {
       expect(isPillHostViewType('canvas')).toBe(true);

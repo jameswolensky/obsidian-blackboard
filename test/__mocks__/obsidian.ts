@@ -16,6 +16,7 @@ export class Plugin {
   addCommand = vi.fn();
   addSettingTab = vi.fn();
   registerEvent = vi.fn();
+  registerDomEvent = vi.fn((el: any, type: string, cb: any) => { el.addEventListener(type, cb); });
   register = vi.fn();
 }
 export class Notice {}

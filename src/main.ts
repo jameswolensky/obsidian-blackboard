@@ -72,6 +72,14 @@ export default class BlackboardPlugin extends Plugin {
       this.register(() => this.globalToolbar?.destroy());
       this.routeToolbar();
     });
+    // Flush pending debounced saves before the app is suspended (iPad lock screen / tab
+    // hidden). A frozen WebView never fires the save timer, so an unflushed stroke would be
+    // lost on lock; flushing on hide writes the canonical document while JS is still running.
+    this.registerDomEvent(activeDocument, 'visibilitychange', () => {
+      if (activeDocument.hidden) this.documentStore.flushAll();
+    });
+    this.registerDomEvent(activeWindow, 'pagehide', () => this.documentStore.flushAll());
+
     this.registerEvent(this.app.workspace.on('active-leaf-change', () => this.routeToolbar()));
     // Keep the toolbar clamped inside the active view when the layout changes
     // (sidebar toggled, pane resized, device rotated).

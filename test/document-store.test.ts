@@ -75,6 +75,27 @@ describe('DocumentStore', () => {
     expect((repo.save.mock.calls[0][1] as BlackboardFile).strokes.map((s) => s.id)).toEqual(['a', 'b']);
   });
 
+  it('flushAll writes a pending debounced save immediately (iPad lock-screen safety)', async () => {
+    const slow = new DocumentStore({ saveDelayMs: 10_000 }); // long debounce, would not fire in test
+    const repo = mockRepo(file([stroke('a')]));
+    const h = await slow.acquire('Draw.blackboard', repo);
+
+    h.commit(file([stroke('a'), stroke('b')]));
+    expect(repo.save).not.toHaveBeenCalled(); // still within the debounce window
+
+    slow.flushAll(); // app backgrounding — force the write now
+
+    expect(repo.save).toHaveBeenCalledTimes(1);
+    expect((repo.save.mock.calls[0][1] as BlackboardFile).strokes.map((s) => s.id)).toEqual(['a', 'b']);
+  });
+
+  it('flushAll is a no-op when there is no pending save', async () => {
+    const repo = mockRepo(file([stroke('a')]));
+    await store.acquire('Draw.blackboard', repo);
+    store.flushAll();
+    expect(repo.save).not.toHaveBeenCalled();
+  });
+
   it('reconcile with foreign disk content replaces strokes and notifies ALL subscribers', async () => {
     const repo = mockRepo(file([stroke('a')]));
     const h1 = await store.acquire('Draw.blackboard', repo);

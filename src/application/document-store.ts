@@ -113,6 +113,23 @@ export class DocumentStore {
     }
   }
 
+  /**
+   * Immediately write every path with a pending debounced save. Called when the app is about
+   * to be backgrounded/suspended (iPad lock screen, tab hidden) — otherwise a stroke drawn
+   * within the debounce window before suspension is lost, because the timer never fires while
+   * the WebView is frozen. Writes the canonical document, so it can never blank a drawing.
+   */
+  flushAll(): void {
+    for (const [path, entry] of this.entries) {
+      if (entry.saveTimer !== null) {
+        window.clearTimeout(entry.saveTimer);
+        entry.saveTimer = null;
+        this.remember(entry, serialize(entry.file));
+        void entry.repo.save(path, entry.file);
+      }
+    }
+  }
+
   private scheduleSave(path: string): void {
     const entry = this.entries.get(path);
     if (!entry) return;
