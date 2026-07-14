@@ -48,7 +48,7 @@
     "@wdio/local-runner": "^9.29.1",
     "@wdio/mocha-framework": "^9.29.1",
     "@wdio/spec-reporter": "^9.29.1",
-    "esbuild": "^0.27.4",
+    "esbuild": "^0.28.1",
     "eslint": "^9.39.4",
     "eslint-plugin-obsidianmd": "^0.4.1",
     "jsdom": "^29.0.1",
