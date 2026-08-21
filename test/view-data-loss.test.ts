@@ -69,4 +69,39 @@ describe('BlackboardView — data loss on clear()+getViewData()', () => {
     const persisted = deserialize(view.getViewData());
     expect(persisted.file.strokes).toHaveLength(2);
   });
+
+  // Regression (2026-08-21, iPad): the guard above protects getViewData(), but when the
+  // DOCUMENT STORE is active the store is the single writer and persist() commits straight
+  // to it — getViewData() is never consulted. So the same clear()-then-write race still
+  // blanked files: clear() empties the engine and sets contentLoaded=false, the handle is
+  // STILL attached, and any later persist() (a stray pointerup/pointercancel after an iPad
+  // suspend, or an erase) commits an EMPTY buildFile() over a real drawing — which the store
+  // then saves to disk AND pushes to every sibling view. persist() needs its own guard.
+  it('persist() after clear() must not commit an empty drawing through the store', async () => {
+    const view = new BlackboardView(new WorkspaceLeaf(), DEFAULT_PLUGIN_SETTINGS);
+    await view.onOpen();
+    view.setViewData(fileWith([stroke('a'), stroke('b')]), true);
+
+    const committed: Array<{ strokes: Stroke[] }> = [];
+    (view as unknown as { handle: unknown }).handle = {
+      commit: (file: { strokes: Stroke[] }) => committed.push(file),
+      getStrokes: () => [stroke('a'), stroke('b')],
+      subscribe: () => undefined,
+      release: () => undefined,
+    };
+
+    // A real edit still commits normally.
+    (view as unknown as { persist(): void }).persist();
+    expect(committed).toHaveLength(1);
+    expect(committed[0].strokes).toHaveLength(2);
+
+    // Obsidian empties the view during teardown/reuse/suspend, handle still attached...
+    view.clear();
+
+    // ...and a stray stroke-end or erase fires persist(). This MUST NOT commit a blank file.
+    (view as unknown as { persist(): void }).persist();
+
+    const blanks = committed.filter((f) => f.strokes.length === 0);
+    expect(blanks).toHaveLength(0);
+  });
 });

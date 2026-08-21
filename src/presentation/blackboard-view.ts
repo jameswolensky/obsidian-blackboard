@@ -260,6 +260,14 @@ export class BlackboardView extends TextFileView {
   /** Persist a mutation. With the store active it is the single writer (commit -> debounced
    * save + sibling refresh); otherwise fall back to Obsidian's debounced requestSave. */
   private persist(): void {
+    // Never write from an engine that does not hold this file's strokes. Obsidian can call
+    // clear() during teardown/reuse/mobile-suspend, which empties the engine and sets
+    // contentLoaded=false while the store handle stays attached. A persist() after that —
+    // a stray pointerup/pointercancel following an iPad suspend, or an erase — would commit
+    // an EMPTY buildFile() over a real drawing, and the store then both saves it to disk and
+    // pushes the blank to every sibling view. getViewData() has this guard; the store path
+    // bypasses getViewData entirely, so it needs its own. (2026-08-21 iPad wipe.)
+    if (!this.contentLoaded) return;
     if (this.handle) this.handle.commit(this.buildFile());
     else this.requestSave();
   }
