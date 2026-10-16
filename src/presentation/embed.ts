@@ -343,9 +343,13 @@ export async function mountBlackboardEmbed(repo: IDrawingRepository, embedEl: HT
   activeDocument.addEventListener('pointerdown', onDocPointerDown, true);
   activeDocument.addEventListener('pointermove', onDocPointerMove, true);
   activeDocument.addEventListener('pointerup', onDocPointerUp, true);
+  // A stroke the system cancels (pointercancel instead of pointerup) ends like a lift, keeping
+  // what was drawn, so the surface never stays stuck mid-stroke.
+  activeDocument.addEventListener('pointercancel', onDocPointerUp, true);
   docListeners.push({ type: 'pointerdown', fn: onDocPointerDown, capture: true });
   docListeners.push({ type: 'pointermove', fn: onDocPointerMove, capture: true });
   docListeners.push({ type: 'pointerup', fn: onDocPointerUp, capture: true });
+  docListeners.push({ type: 'pointercancel', fn: onDocPointerUp, capture: true });
 
   // iPadOS Scribble intercepts Apple Pencil pointer events that look like handwriting,
   // dropping whole strokes before they reach the page. The proven fix (the one Excalidraw

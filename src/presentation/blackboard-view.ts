@@ -514,8 +514,15 @@ export class BlackboardView extends TextFileView {
       }
 
       if (!drawInput) return;
-      // A finger gesture is in progress: do not begin a stroke (finger navigation wins).
-      if (!this.isEmbedded && this.navPointers.size > 0) return;
+      // A finger gesture is in progress. The Pencil wins over it: on iPad the palm usually rests
+      // on the screen before the Pencil touches down, and that touch must not swallow the stroke.
+      // Drop the navigation pointers (the resting palm's later moves and lift are then ignored as
+      // non-drawing input) and draw. Any other input still yields to finger navigation.
+      if (!this.isEmbedded && this.navPointers.size > 0) {
+        if (e.pointerType !== 'pen') return;
+        this.navPointers.clear();
+        this.pinchPrev = null;
+      }
       e.stopPropagation();
       e.preventDefault();
       // Stop re-fitting the standalone view on resize once the user has drawn.
@@ -611,10 +618,15 @@ export class BlackboardView extends TextFileView {
     activeDocument.addEventListener('pointerdown', onDocPointerDown, true);
     activeDocument.addEventListener('pointermove', onDocPointerMove, true);
     activeDocument.addEventListener('pointerup', onDocPointerUp, true);
+    // iPadOS ends palm and finger touches with pointercancel (not pointerup), typically when the
+    // Pencil comes down. Treat it as the pointer ending: otherwise the touch stays in navPointers
+    // and every later pen stroke is rejected as "finger navigation in progress".
+    activeDocument.addEventListener('pointercancel', onDocPointerUp, true);
 
     this.docListeners.push({ type: 'pointerdown', fn: onDocPointerDown, capture: true });
     this.docListeners.push({ type: 'pointermove', fn: onDocPointerMove, capture: true });
     this.docListeners.push({ type: 'pointerup', fn: onDocPointerUp, capture: true });
+    this.docListeners.push({ type: 'pointercancel', fn: onDocPointerUp, capture: true });
 
     // Standalone desktop navigation: Ctrl/Cmd+wheel zooms about the cursor; space+drag
     // pans (handled in the pointer handlers above). These mutate only the view transform.

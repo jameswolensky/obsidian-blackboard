@@ -791,6 +791,60 @@ describe('BlackboardView', () => {
       return e;
     }
 
+    function cancelAt(x: number, y: number, pointerType: string, pointerId = 1) {
+      const e = new PointerEvent('pointercancel', { clientX: x, clientY: y, pointerType, pointerId, bubbles: true, cancelable: true });
+      document.dispatchEvent(e);
+      return e;
+    }
+
+    it('a finger touch the system cancels (pointercancel) does not block later pen strokes', async () => {
+      const view = createView();
+      await view.onOpen();
+      const engine = (view as any).engine;
+      const dc = (view as any).drawingContainer as HTMLElement;
+
+      // iPadOS ends a resting palm / finger with pointercancel, not pointerup.
+      downAt(dc, 100, 100, 'touch', 7);
+      cancelAt(100, 100, 'touch', 7);
+      expect((view as any).navPointers.size).toBe(0);
+
+      downAt(dc, 50, 50, 'pen', 2);
+      expect(engine.beginStroke).toHaveBeenCalledWith('pen');
+      await view.onClose();
+    });
+
+    it('a palm resting while the pen draws, then cancelled, does not block the next stroke', async () => {
+      const view = createView();
+      await view.onOpen();
+      const engine = (view as any).engine;
+      const dc = (view as any).drawingContainer as HTMLElement;
+
+      downAt(dc, 300, 300, 'touch', 7);   // palm lands first (navigation pointer)
+      cancelAt(300, 300, 'touch', 7);     // iPadOS cancels it as the Pencil comes down
+      downAt(dc, 50, 50, 'pen', 2);
+      moveAt(60, 55, 'pen', 2);
+      upAt(60, 55, 'pen', 2);
+      downAt(dc, 80, 80, 'pen', 2);       // the following stroke must start too
+
+      expect(engine.beginStroke).toHaveBeenCalledTimes(2);
+      await view.onClose();
+    });
+
+    it('a pen stroke the system cancels ends like a lift (kept, not stuck mid-stroke)', async () => {
+      const view = createView();
+      await view.onOpen();
+      const engine = (view as any).engine;
+      const dc = (view as any).drawingContainer as HTMLElement;
+
+      downAt(dc, 50, 50, 'pen', 2);
+      moveAt(70, 60, 'pen', 2);
+      cancelAt(70, 60, 'pen', 2);
+
+      expect(engine.endStroke).toHaveBeenCalledTimes(1);
+      expect((view as any).strokeActive).toBe(false);
+      await view.onClose();
+    });
+
     it('pen pointerdown begins a stroke (pen always draws, never navigates)', async () => {
       const view = createView();
       await view.onOpen();
@@ -869,19 +923,46 @@ describe('BlackboardView', () => {
       expect(engine.panBy).not.toHaveBeenCalled();
     });
 
-    it('does not begin a stroke while a finger gesture is active: pen-down panics no stroke', async () => {
+    it('the Pencil takes priority over a resting palm: pen-down mid-gesture draws and ends the navigation', async () => {
       const view = createView();
       await view.onOpen();
       const engine = (view as any).engine;
       const dc = (view as any).drawingContainer as HTMLElement;
 
-      // A finger is already panning.
+      // The palm is already resting (a navigation pointer).
       downAt(dc, 100, 100, 'touch', 1);
-      // Pen comes down mid-gesture.
+      // The Pencil comes down.
       downAt(dc, 120, 120, 'pen', 2);
 
+      expect(engine.beginStroke).toHaveBeenCalledWith('pen');
+      expect((view as any).strokeActive).toBe(true);
+      expect((view as any).navPointers.size).toBe(0);
+
+      // The palm moving and lifting neither pans nor ends the stroke.
+      engine.panBy.mockClear();
+      moveAt(140, 110, 'touch', 1);
+      expect(engine.panBy).not.toHaveBeenCalled();
+      upAt(140, 110, 'touch', 1);
+      expect((view as any).strokeActive).toBe(true);
+      expect(engine.endStroke).not.toHaveBeenCalled();
+
+      upAt(130, 125, 'pen', 2);
+      expect(engine.endStroke).toHaveBeenCalledTimes(1);
+      await view.onClose();
+    });
+
+    it('a mouse still yields to an active finger gesture (no stroke)', async () => {
+      const view = createView();
+      await view.onOpen();
+      const engine = (view as any).engine;
+      const dc = (view as any).drawingContainer as HTMLElement;
+
+      downAt(dc, 100, 100, 'touch', 1);
+      downAt(dc, 120, 120, 'mouse', 2);
+
       expect(engine.beginStroke).not.toHaveBeenCalled();
-      expect((view as any).strokeActive).toBe(false);
+      upAt(100, 100, 'touch', 1);
+      await view.onClose();
     });
 
     it('Ctrl/Cmd+wheel zooms about the cursor and prevents page scroll', async () => {

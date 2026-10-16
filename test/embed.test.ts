@@ -605,6 +605,18 @@ describe('host-driven sizing (no file-mutating resize handle)', () => {
     expect(engineInstance.fitReferenceSize).not.toHaveBeenCalled();
   });
 
+  it('a pen stroke the system cancels (pointercancel) ends like a lift', async () => {
+    cleanup = await mountBlackboardEmbed(repo, embedEl, filePath, settings);
+    const engineInstance = engineInstances.at(-1)!;
+    const drawingContainer = embedEl.querySelector('.blackboard-drawing-container') as HTMLElement;
+    const down = new PointerEvent('pointerdown', { clientX: 50, clientY: 50, bubbles: true, cancelable: true, pointerType: 'pen' });
+    Object.defineProperty(down, 'target', { value: drawingContainer, writable: false });
+    document.dispatchEvent(down);
+    document.dispatchEvent(new PointerEvent('pointercancel', { clientX: 60, clientY: 60, bubbles: true, pointerType: 'pen' }));
+
+    expect(engineInstance.endStroke).toHaveBeenCalledTimes(1);
+  });
+
   it('notifies the surface manager that a stroke ended on pointer-up (QA3: undo arrow lights up)', async () => {
     const surfaceManager = { register: vi.fn(), unregister: vi.fn(), setActive: vi.fn(), notifyStrokeStart: vi.fn(), notifyStrokeEnd: vi.fn() } as any;
     cleanup = await mountBlackboardEmbed(repo, embedEl, filePath, settings, surfaceManager);
