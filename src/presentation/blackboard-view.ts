@@ -197,6 +197,9 @@ export class BlackboardView extends TextFileView {
       // Standalone: an infinite pan + zoom canvas. The surface fills the pane and
       // navigation is via the view transform (pan/zoom), NOT document scroll.
       container.setCssStyles({ position: 'relative' });
+      // The surface fills the pane and navigation is the view transform, so the pane itself
+      // never scrolls (a scrolled pane shifts the surface under the pointer).
+      container.addClass('blackboard-standalone-host');
       this.layoutStandalone();
       this.resizeObserver = new ResizeObserver(() => this.layoutStandalone());
       this.resizeObserver.observe(container);
@@ -349,6 +352,7 @@ export class BlackboardView extends TextFileView {
   }
 
   async onClose(): Promise<void> {
+    this.contentEl.classList.remove('blackboard-standalone-host');
     // Flush any unsaved strokes before tearing down. When the store is active it is the
     // single writer and flushes its own pending debounced save on release(), so only the
     // legacy (no-store) path writes through Obsidian here (avoids a double-write).
@@ -635,7 +639,18 @@ export class BlackboardView extends TextFileView {
       dc.addEventListener('wheel', onWheel, { passive: false });
       this.docListeners.push({ type: '__observer__', fn: () => dc.removeEventListener('wheel', onWheel), capture: false });
 
-      const onKeyDown = (e: KeyboardEvent) => { if (e.code === 'Space') this.spaceDown = true; };
+      const onKeyDown = (e: KeyboardEvent) => {
+        if (e.code !== 'Space') return;
+        this.spaceDown = true;
+        // Space is the pan modifier here, so it must not also do the browser's page-scroll: that
+        // smooth-scrolls the pane and slides the surface under the pointer mid-stroke. Only when
+        // this view is the active one and focus is not in a text field (typing a space elsewhere
+        // keeps working).
+        const t = e.target;
+        if (t instanceof HTMLElement && (t.isContentEditable || t.closest('input, textarea, select'))) return;
+        if (this.app?.workspace?.getActiveViewOfType?.(BlackboardView) !== this) return;
+        e.preventDefault();
+      };
       const onKeyUp = (e: KeyboardEvent) => {
         if (e.code === 'Space') { this.spaceDown = false; this.spacePanActive = false; this.spacePanPrev = null; }
       };

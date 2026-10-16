@@ -284,3 +284,9 @@ button.blackboard-gt-size-dot.blackboard-gt-size-dot.blackboard-gt-size-dot {
   touch-action: manipulation;
 }
 .blackboard-global-toolbar-pill svg { width: 28px; height: 28px; }
+
+/* Full-page drawing view: the surface fills the pane and pans/zooms through its own view
+   transform, so the pane must never scroll underneath it. */
+.blackboard-standalone-host {
+  overflow: hidden;
+}
