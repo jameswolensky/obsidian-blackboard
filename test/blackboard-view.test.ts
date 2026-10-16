@@ -1,3 +1,5 @@
+import { JSDOM } from 'jsdom';
+import { installInstanceOf } from './setup';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { TFile, WorkspaceLeaf } from 'obsidian';
 import { DEFAULT_PLUGIN_SETTINGS } from '../src/domain/entities';
@@ -1051,6 +1053,26 @@ describe('BlackboardView', () => {
       const elsewhere = new KeyboardEvent('keydown', { code: 'Space', bubbles: true, cancelable: true });
       document.dispatchEvent(elsewhere);
       expect(elsewhere.defaultPrevented).toBe(false);
+      document.dispatchEvent(new KeyboardEvent('keyup', { code: 'Space', bubbles: true }));
+      await view.onClose();
+    });
+
+    it('Space still types normally in a text field inside a popout window', async () => {
+      const view = createView();
+      await view.onOpen();
+      (view as any).app = { workspace: { getActiveViewOfType: () => view } };
+      // A popout window has its own window, document and HTMLElement class.
+      const popout = new JSDOM('<!doctype html><body><input></body>');
+      installInstanceOf(popout.window as any);
+      const input = popout.window.document.querySelector('input')!;
+      expect(input instanceof HTMLElement).toBe(false); // the cross-window case a plain instanceof misses
+
+      const ev = new KeyboardEvent('keydown', { code: 'Space', bubbles: true, cancelable: true });
+      Object.defineProperty(ev, 'target', { value: input });
+      document.dispatchEvent(ev);
+
+      expect(ev.defaultPrevented).toBe(false);
+      popout.window.close();
       document.dispatchEvent(new KeyboardEvent('keyup', { code: 'Space', bubbles: true }));
       await view.onClose();
     });

@@ -11,6 +11,19 @@ if (typeof globalThis.ResizeObserver === 'undefined') {
   } as any;
 }
 
+// Obsidian's cross-window instanceof (Node.instanceOf): true when the node is an instance of the
+// class of that name in its OWN window, which is what makes popout-window elements pass.
+// Obsidian installs it in every window it opens (popouts included); tests call this for extra windows.
+export function installInstanceOf(win: { Node: typeof Node }): void {
+  if ((win.Node.prototype as any).instanceOf) return;
+  (win.Node.prototype as any).instanceOf = function (this: Node, type: { new (...a: any[]): unknown; name: string }) {
+    if (this instanceof type) return true;
+    const own = this.ownerDocument?.defaultView as any;
+    return !!own && typeof own[type.name] === 'function' && this instanceof own[type.name];
+  };
+}
+installInstanceOf(globalThis as any);
+
 if (!HTMLElement.prototype.empty) {
   HTMLElement.prototype.empty = function () {
     this.innerHTML = '';

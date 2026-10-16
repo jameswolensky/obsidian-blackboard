@@ -658,8 +658,10 @@ export class BlackboardView extends TextFileView {
         // smooth-scrolls the pane and slides the surface under the pointer mid-stroke. Only when
         // this view is the active one and focus is not in a text field (typing a space elsewhere
         // keeps working).
-        const t = e.target;
-        if (t instanceof HTMLElement && (t.isContentEditable || t.closest('input, textarea, select'))) return;
+        // instanceOf, not instanceof: in a popout window the target belongs to that window's
+        // HTMLElement class, which a plain instanceof against this window's class rejects.
+        const t = e.target as Node | null;
+        if (t?.instanceOf?.(HTMLElement) && (t.isContentEditable || t.closest('input, textarea, select'))) return;
         if (this.app?.workspace?.getActiveViewOfType?.(BlackboardView) !== this) return;
         e.preventDefault();
       };
