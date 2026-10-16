@@ -1187,6 +1187,12 @@ describe('canvas-node frame on resize (canvas-node-extend-on-resize)', () => {
   let settings: PluginSettings;
   let OriginalRO: typeof ResizeObserver;
   let roCallbacks: ResizeObserverCallback[];
+  // jsdom has no layout. In Obsidian the drawing container is the node minus its border and
+  // chrome; CHROME models that gap (real Obsidian 1.13: 2px) and can change to model a
+  // container that settles after mount.
+  let CHROME = 2;
+  const sizeProps = ['clientWidth', 'clientHeight'] as const;
+  const originalSize = sizeProps.map((k) => Object.getOwnPropertyDescriptor(HTMLElement.prototype, k));
 
   function makeCanvasNode(w: number, h: number, x = 0, y = 0): HTMLElement & { setLogical: (nw: number, nh: number, nx?: number, ny?: number) => void } {
     const node = document.createElement('div') as any;
@@ -1216,6 +1222,15 @@ describe('canvas-node frame on resize (canvas-node-extend-on-resize)', () => {
     settings = makeSettings();
     OriginalRO = globalThis.ResizeObserver;
     roCallbacks = [];
+    CHROME = 2;
+    sizeProps.forEach((k, i) => Object.defineProperty(HTMLElement.prototype, k, {
+      configurable: true,
+      get(this: HTMLElement) {
+        const node = this.classList.contains('blackboard-drawing-container') ? this.closest('.canvas-node') as HTMLElement | null : null;
+        if (!node) return originalSize[i]?.get?.call(this) ?? 0;
+        return (i === 0 ? node.offsetWidth : node.offsetHeight) - CHROME;
+      },
+    }));
     globalThis.ResizeObserver = class {
       constructor(cb: ResizeObserverCallback) { roCallbacks.push(cb); }
       observe() {}
@@ -1226,6 +1241,7 @@ describe('canvas-node frame on resize (canvas-node-extend-on-resize)', () => {
 
   afterEach(() => {
     globalThis.ResizeObserver = OriginalRO;
+    sizeProps.forEach((k, i) => { if (originalSize[i]) Object.defineProperty(HTMLElement.prototype, k, originalSize[i]!); });
   });
 
   async function mountInNode(node: HTMLElement) {
@@ -1242,14 +1258,14 @@ describe('canvas-node frame on resize (canvas-node-extend-on-resize)', () => {
     return { embedEl, engine, cleanup };
   }
 
-  it('enlarge from the right keeps the transform: resizeBox grows the box, no panBy, no re-fit', async () => {
+  it('enlarge from the right keeps the transform: resizeBox grows the box to the drawing container, no panBy, no re-fit', async () => {
     const node = makeCanvasNode(400, 300, 0, 0);
     const { engine, cleanup } = await mountInNode(node);
 
     node.setLogical(500, 300); // right edge dragged out, x/y unchanged
     fireResize();
 
-    expect(engine.resizeBox).toHaveBeenCalledWith(500, 300);
+    expect(engine.resizeBox).toHaveBeenCalledWith(498, 298);
     expect(engine.panBy).not.toHaveBeenCalled();
     expect(engine.fitReferenceSize).not.toHaveBeenCalled();
     expect(engine.setDisplaySize).not.toHaveBeenCalled();
@@ -1265,7 +1281,7 @@ describe('canvas-node frame on resize (canvas-node-extend-on-resize)', () => {
     node.setLogical(500, 300, -100, 0);
     fireResize();
 
-    expect(engine.resizeBox).toHaveBeenCalledWith(500, 300);
+    expect(engine.resizeBox).toHaveBeenCalledWith(498, 298);
     expect(engine.panBy).toHaveBeenCalledWith(100, 0);
     cleanup();
     document.body.removeChild(node);
@@ -1279,7 +1295,7 @@ describe('canvas-node frame on resize (canvas-node-extend-on-resize)', () => {
     node.setLogical(400, 380, 0, -80);
     fireResize();
 
-    expect(engine.resizeBox).toHaveBeenCalledWith(400, 380);
+    expect(engine.resizeBox).toHaveBeenCalledWith(398, 378);
     expect(engine.panBy).toHaveBeenCalledWith(0, 80);
     cleanup();
     document.body.removeChild(node);
@@ -1294,13 +1310,13 @@ describe('canvas-node frame on resize (canvas-node-extend-on-resize)', () => {
     node.setLogical(300, 300); // right edge dragged inward (shrink)
     fireResize();
 
-    expect(engine.resizeBox).toHaveBeenCalledWith(300, 300);
+    expect(engine.resizeBox).toHaveBeenCalledWith(298, 298);
     expect(engine.strokeManager.strokes.length).toBe(before); // strokes preserved (clipped, not deleted)
 
     // Enlarge back -> box restored, clipped content reappears.
     node.setLogical(400, 300);
     fireResize();
-    expect(engine.resizeBox).toHaveBeenCalledWith(400, 300);
+    expect(engine.resizeBox).toHaveBeenCalledWith(398, 298);
     expect(engine.strokeManager.strokes.length).toBe(before);
     cleanup();
     document.body.removeChild(node);
@@ -1330,9 +1346,38 @@ describe('canvas-node frame on resize (canvas-node-extend-on-resize)', () => {
     node.setLogical(500, 380, -100, -80); // both left and top edges dragged out
     fireResize();
 
-    expect(engine.resizeBox).toHaveBeenCalledWith(500, 380);
+    expect(engine.resizeBox).toHaveBeenCalledWith(498, 378);
     expect(engine.panBy).toHaveBeenCalledWith(100, 0);
     expect(engine.panBy).toHaveBeenCalledWith(0, 80);
+    cleanup();
+    document.body.removeChild(node);
+  });
+
+  it('sizes the bitmap to the drawing container, not the node, after a bottom-right corner drag', async () => {
+    const node = makeCanvasNode(400, 300, 0, 0);
+    CHROME = 12; // a node whose chrome is wider than the 2px border
+    const { engine, cleanup } = await mountInNode(node);
+
+    node.setLogical(640, 450); // bottom-right corner dragged out, x/y unchanged
+    fireResize();
+
+    expect(engine.resizeBox).toHaveBeenCalledTimes(1);
+    expect(engine.resizeBox).toHaveBeenCalledWith(628, 438);
+    expect(engine.panBy).not.toHaveBeenCalled();
+    cleanup();
+    document.body.removeChild(node);
+  });
+
+  it('resizes the bitmap when the drawing container settles after mount without the node changing', async () => {
+    const node = makeCanvasNode(400, 300, 0, 0);
+    CHROME = 18; // at mount the container is still 382x282
+    const { engine, cleanup } = await mountInNode(node);
+
+    CHROME = 2; // layout settles: container 398x298, node still 400x300
+    fireResize();
+
+    expect(engine.resizeBox).toHaveBeenCalledWith(398, 298);
+    expect(engine.panBy).not.toHaveBeenCalled();
     cleanup();
     document.body.removeChild(node);
   });

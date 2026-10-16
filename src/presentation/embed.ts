@@ -161,6 +161,11 @@ export async function mountBlackboardEmbed(repo: IDrawingRepository, embedEl: HT
   // (non-dragged) edge. Markdown embeds don't use this.
   let prevLogical = canvasNode ? nodeLogicalRect() : null;
 
+  // The canvases' backing store must always match the drawing surface's own layout size:
+  // the pen is mapped through that size (screenToDrawing), so a bitmap of any other size is
+  // stretched and strokes render offset from the stylus. Tracked separately from the node rect.
+  let lastBox = hostBox();
+
   // Host resize handling. A Markdown embed re-fits (host-driven sizing, capped at 1× so it
   // never upscales). A canvas-node embed is a FIXED-SCALE FRAME: it keeps the established
   // scale and resizes the backing store (resizeBox, transform-preserving) so the drag side
@@ -168,16 +173,20 @@ export async function mountBlackboardEmbed(repo: IDrawingRepository, embedEl: HT
   const ro = new ResizeObserver(() => {
     if (canvasNode && prevLogical) {
       const cur = nodeLogicalRect();
+      const box = hostBox();
       const dw = cur.w - prevLogical.w;
       const dh = cur.h - prevLogical.h;
-      // Pure canvas zoom (or any change with no logical-size delta): do nothing.
-      if (dw === 0 && dh === 0) return;
-      // resizeBox preserves the view transform -> right/bottom drag anchors content top-left.
-      engine.resizeBox(cur.w, cur.h);
+      // Size the bitmap to the drawing container, not the node: the node also holds its border
+      // and chrome, and the container can settle after mount without the node changing size.
+      // A pure canvas zoom changes neither (layout px), so it stays a no-op.
+      if (box.w !== lastBox.w || box.h !== lastBox.h) {
+        engine.resizeBox(box.w, box.h);
+        lastBox = box;
+      }
       // Left edge moved (logical x changed): nudge content right/left by Δw so the right edge
       // stays anchored. Top edge moved (logical y changed): nudge by Δh to anchor the bottom.
-      if (cur.x !== prevLogical.x) engine.panBy(dw, 0);
-      if (cur.y !== prevLogical.y) engine.panBy(0, dh);
+      if (dw !== 0 && cur.x !== prevLogical.x) engine.panBy(dw, 0);
+      if (dh !== 0 && cur.y !== prevLogical.y) engine.panBy(0, dh);
       prevLogical = cur;
     } else {
       const b = hostBox();
