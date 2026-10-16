@@ -25,13 +25,16 @@ export interface ViewTransform { scale: number; offsetX: number; offsetY: number
  * scale (via the existing offset math) rather than enlarged to fill it. A Markdown embed
  * passes `maxScale = 1` so a small drawing is shown crisp at natural size, never upscaled.
  */
-export function fitContentToBox(box: Box, content: Bounds | null, padding = 0, maxScale = Infinity): ViewTransform {
+export function fitContentToBox(box: Box, content: Bounds | null, padding = 0, maxScale = Infinity, screenMargin = 0): ViewTransform {
   if (box.width <= 0 || box.height <= 0 || !content || content.width <= 0 || content.height <= 0) {
     return { scale: 1, offsetX: 0, offsetY: 0 };
   }
   const cw = content.width + padding * 2;
   const ch = content.height + padding * 2;
-  const scale = Math.min(box.width / cw, box.height / ch, maxScale);
+  // `screenMargin` is in box px (unlike `padding`, which is in content units and vanishes on a
+  // large drawing): it keeps edge strokes visibly clear of the surface edge at any scale.
+  const m = (box.width > screenMargin * 2 + 1 && box.height > screenMargin * 2 + 1) ? screenMargin : 0;
+  const scale = Math.min((box.width - m * 2) / cw, (box.height - m * 2) / ch, maxScale);
   const originX = content.x - padding;
   const originY = content.y - padding;
   const offsetX = (box.width - cw * scale) / 2 - originX * scale;

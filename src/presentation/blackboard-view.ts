@@ -24,6 +24,9 @@ function dbgTarget(t: EventTarget | null): string {
 
 
 export const VIEW_TYPE = 'blackboard-view';
+
+/** Screen-px margin kept around the drawing when the standalone view fits it on open/resize. */
+const STANDALONE_FIT_MARGIN = 16;
 export { FILE_EXTENSION };
 
 // Tracked document/observer teardown callbacks. Handlers are registered with concrete event
@@ -293,7 +296,7 @@ export class BlackboardView extends TextFileView {
       // Size the backing store to the pane, then fit the content into it (empty content
       // yields the identity transform — a blank pane-filling canvas at scale 1).
       this.engine.setDisplaySize(paneW, paneH);
-      this.engine.refitToContent();
+      this.engine.refitToContent(0, STANDALONE_FIT_MARGIN);
     }
   }
 
@@ -613,11 +616,15 @@ export class BlackboardView extends TextFileView {
     // pans (handled in the pointer handlers above). These mutate only the view transform.
     if (!this.isEmbedded) {
       const onWheel = (e: WheelEvent) => {
-        if (!(e.ctrlKey || e.metaKey)) return;
         if (!dc.contains(e.target as Node)) return;
         e.preventDefault();
         e.stopPropagation();
         this.userInteracted = true;
+        // Plain wheel / two-finger trackpad scroll pans the infinite canvas; Ctrl/Cmd zooms.
+        if (!(e.ctrlKey || e.metaKey)) {
+          engine.panBy(-e.deltaX, -e.deltaY);
+          return;
+        }
         const rect = dc.getBoundingClientRect();
         const cx = e.clientX - rect.left;
         const cy = e.clientY - rect.top;

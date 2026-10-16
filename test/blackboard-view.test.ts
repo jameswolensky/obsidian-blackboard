@@ -914,6 +914,20 @@ describe('BlackboardView', () => {
       expect(engine.zoomAt).not.toHaveBeenCalled();
     });
 
+    it('plain wheel / trackpad scroll pans the canvas', async () => {
+      const view = createView();
+      await view.onOpen();
+      const engine = (view as any).engine;
+      const dc = (view as any).drawingContainer as HTMLElement;
+
+      const wheel = new WheelEvent('wheel', { clientX: 120, clientY: 80, deltaX: 30, deltaY: -50, bubbles: true, cancelable: true });
+      Object.defineProperty(wheel, 'target', { value: dc, writable: false });
+      dc.dispatchEvent(wheel);
+
+      expect(engine.panBy).toHaveBeenCalledWith(-30, 50);
+      expect(wheel.defaultPrevented).toBe(true);
+    });
+
     it('space+drag pans on desktop (mouse) via engine.panBy', async () => {
       const view = createView();
       await view.onOpen();

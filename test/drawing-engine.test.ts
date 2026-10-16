@@ -752,6 +752,18 @@ describe('DrawingEngine — stable reference-size fit (B3 idempotent embed fit)'
     return { id: `s${x}`, tool: 'pen', color: '#fff', size: 2, opacity: 1, points, hasPressure: false, timestamp: 0 };
   }
 
+  it('contentFitsView: true while every stroke is inside the box, false once one leaves it', () => {
+    const engine = new DrawingEngine(createMockContainer(), 800, 600);
+    engine.setDisplaySize(400, 300);
+    engine.loadStrokes([strokeAt(10, 10, 100)]);
+    engine.setView({ scale: 1, offsetX: 0, offsetY: 0 });
+    expect(engine.contentFitsView()).toBe(true);
+    engine.loadStrokes([strokeAt(10, 10, 100), strokeAt(500, 10, 50)]); // added far right, outside 400px
+    expect(engine.contentFitsView()).toBe(false);
+    engine.fitReferenceSize(560, 160, 0, Infinity, 8);
+    expect(engine.contentFitsView()).toBe(true);
+  });
+
   it('fits a reference rectangle into the box with scale min(boxW/refW, boxH/refH)', () => {
     const engine = new DrawingEngine(createMockContainer(), 800, 600);
     engine.loadStrokes([strokeAt(0, 0, 100)]);

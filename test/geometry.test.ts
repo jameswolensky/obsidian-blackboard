@@ -175,3 +175,26 @@ describe('naturalContentSize', () => {
     expect(naturalContentSize({ x: 0, y: 0, width: 0, height: 0 })).toEqual({ width: 400, height: 300 });
   });
 });
+
+describe('fitContentToBox screenMargin (screen-px margin)', () => {
+  it('keeps a large drawing a fixed number of screen px inside the box, centred, aspect preserved', () => {
+    const box = { width: 400, height: 300 };
+    const content = { x: -1465, y: -121, width: 3369, height: 2263 };
+    const t = fitContentToBox(box, content, 0, Infinity, 8);
+    const l = content.x * t.scale + t.offsetX, r = (content.x + content.width) * t.scale + t.offsetX;
+    const top = content.y * t.scale + t.offsetY, b = (content.y + content.height) * t.scale + t.offsetY;
+    expect(Math.min(l, top, 400 - r, 300 - b)).toBeCloseTo(8, 5); // the binding side gets exactly the margin
+    expect(l).toBeCloseTo(400 - r, 5);                              // centred horizontally
+    expect(top).toBeCloseTo(300 - b, 5);                            // centred vertically
+  });
+
+  it('drops the margin when the box is too small to hold it', () => {
+    const t = fitContentToBox({ width: 10, height: 10 }, { x: 0, y: 0, width: 100, height: 100 }, 0, Infinity, 8);
+    expect(t.scale).toBeCloseTo(0.1, 5);
+  });
+
+  it('defaults to no margin (back-compatible)', () => {
+    expect(fitContentToBox({ width: 200, height: 100 }, { x: 0, y: 0, width: 100, height: 100 }))
+      .toEqual(fitContentToBox({ width: 200, height: 100 }, { x: 0, y: 0, width: 100, height: 100 }, 0, Infinity, 0));
+  });
+});

@@ -289,10 +289,10 @@ export class DrawingEngine {
   }
 
   /** Recompute the content bbox from current strokes and re-fit. Call on idle, NOT mid-stroke. */
-  refitToContent(padding = 0): void {
+  refitToContent(padding = 0, screenMargin = 0): void {
     const b = this.getContentBounds();
     this.contentBounds = (b.width > 0 && b.height > 0) ? b : null;
-    this.recomputeView(padding);
+    this.recomputeView(padding, screenMargin);
     this.staticDirty = true;
     this.activeDirty = true;
     this.requestRender();
@@ -312,7 +312,7 @@ export class DrawingEngine {
    * since the origin cancels in the letterbox offset. Like refitToContent/resizeBox, apply
    * this on layout/resize only, never per stroke.
    */
-  fitReferenceSize(refWidth: number, refHeight: number, padding = 0, maxScale = Infinity): void {
+  fitReferenceSize(refWidth: number, refHeight: number, padding = 0, maxScale = Infinity, screenMargin = 0): void {
     const b = this.getContentBounds();
     const hasContent = b.width > 0 && b.height > 0;
     const reference = (refWidth > 0 && refHeight > 0)
@@ -324,18 +324,32 @@ export class DrawingEngine {
       reference,
       padding,
       maxScale,
+      screenMargin,
     );
     this.staticDirty = true;
     this.activeDirty = true;
     this.requestRender();
   }
 
-  private recomputeView(padding = 0): void {
+  private recomputeView(padding = 0, screenMargin = 0): void {
     this.view = fitContentToBox(
       { width: this.displayWidth || this.drawingWidth, height: this.displayHeight || this.drawingHeight },
       this.contentBounds,
       padding,
+      Infinity,
+      screenMargin,
     );
+  }
+
+  /** True when every stroke lies inside the visible display box under the current view. */
+  contentFitsView(): boolean {
+    const b = this.getContentBounds();
+    if (b.width <= 0 || b.height <= 0) return true;
+    const w = this.displayWidth || this.drawingWidth;
+    const h = this.displayHeight || this.drawingHeight;
+    const { scale, offsetX, offsetY } = this.view;
+    const l = b.x * scale + offsetX, t = b.y * scale + offsetY;
+    return l >= 0 && t >= 0 && l + b.width * scale <= w && t + b.height * scale <= h;
   }
 
   getViewTransform(): ViewTransform {
