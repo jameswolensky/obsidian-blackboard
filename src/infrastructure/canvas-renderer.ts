@@ -289,10 +289,10 @@ export class DrawingEngine {
   }
 
   /** Recompute the content bbox from current strokes and re-fit. Call on idle, NOT mid-stroke. */
-  refitToContent(padding = 0, screenMargin = 0): void {
+  refitToContent(padding = 0, screenMargin = 0, maxScale = Infinity): void {
     const b = this.getContentBounds();
     this.contentBounds = (b.width > 0 && b.height > 0) ? b : null;
-    this.recomputeView(padding, screenMargin);
+    this.recomputeView(padding, screenMargin, maxScale);
     this.staticDirty = true;
     this.activeDirty = true;
     this.requestRender();
@@ -315,8 +315,11 @@ export class DrawingEngine {
   fitReferenceSize(refWidth: number, refHeight: number, padding = 0, maxScale = Infinity, screenMargin = 0): void {
     const b = this.getContentBounds();
     const hasContent = b.width > 0 && b.height > 0;
-    const reference = (refWidth > 0 && refHeight > 0)
-      ? { x: hasContent ? b.x : 0, y: hasContent ? b.y : 0, width: refWidth, height: refHeight }
+    // An empty drawing opens at 1:1. Its saved size (800x600 for a new file) says nothing about
+    // its strokes yet, and fitting it would open a small node zoomed out, so the first strokes
+    // would be saved larger than they were drawn.
+    const reference = (hasContent && refWidth > 0 && refHeight > 0)
+      ? { x: b.x, y: b.y, width: refWidth, height: refHeight }
       : null;
     this.contentBounds = reference;
     this.view = fitContentToBox(
@@ -331,12 +334,12 @@ export class DrawingEngine {
     this.requestRender();
   }
 
-  private recomputeView(padding = 0, screenMargin = 0): void {
+  private recomputeView(padding = 0, screenMargin = 0, maxScale = Infinity): void {
     this.view = fitContentToBox(
       { width: this.displayWidth || this.drawingWidth, height: this.displayHeight || this.drawingHeight },
       this.contentBounds,
       padding,
-      Infinity,
+      maxScale,
       screenMargin,
     );
   }

@@ -749,6 +749,15 @@ describe('BlackboardView', () => {
       expect(engine.resizeBox).not.toHaveBeenCalled();
     });
 
+    it('never zooms a drawing in past 1:1 when it opens (only shrinks a big one to fit)', async () => {
+      const view = createView();
+      await view.onOpen();
+      const engine = (view as any).engine;
+
+      const args = engine.refitToContent.mock.calls.at(-1);
+      expect(args[2]).toBe(1);
+    });
+
     it('preserves the view (resizeBox, no re-fit) once userInteracted is true', async () => {
       const view = createView();
       await view.onOpen();

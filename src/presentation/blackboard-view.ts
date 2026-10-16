@@ -282,7 +282,7 @@ export class BlackboardView extends TextFileView {
    * Standalone view layout: the drawing surface FILLS the pane (no grow-to-content, no
    * document scroll). Navigation is over the engine's view transform (infinite pan + zoom).
    * While the user has not yet interacted, the loaded content is fitted into the pane
-   * (aspect-preserved, centred) on open/resize. Once `userInteracted` is set, a resize only
+   * (aspect-preserved, centred, shrunk if needed but never zoomed in) on open/resize. Once `userInteracted` is set, a resize only
    * resizes the backing store and the current pan/zoom is preserved (no re-fit jump).
    */
   private layoutStandalone(): void {
@@ -296,10 +296,10 @@ export class BlackboardView extends TextFileView {
       // Preserve the user's pan/zoom; only resize the backing store to the new pane size.
       this.engine.resizeBox(paneW, paneH);
     } else {
-      // Size the backing store to the pane, then fit the content into it (empty content
-      // yields the identity transform — a blank pane-filling canvas at scale 1).
+      // Size the backing store to the pane, then fit the content into it. The fit only shrinks a
+      // big drawing, never zooms a small one in (maxScale 1); empty content opens at scale 1.
       this.engine.setDisplaySize(paneW, paneH);
-      this.engine.refitToContent(0, STANDALONE_FIT_MARGIN);
+      this.engine.refitToContent(0, STANDALONE_FIT_MARGIN, 1);
     }
   }
 

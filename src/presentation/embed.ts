@@ -138,11 +138,10 @@ export async function mountBlackboardEmbed(repo: IDrawingRepository, embedEl: HT
     docListeners.push({ type: '__observer__', fn: () => observer.disconnect(), capture: false });
   }
 
-  // Markdown embeds (no .canvas-node ancestor) are a fixed-scale fit-to-content FRAME that
-  // never upscales past natural size (maxScale = 1 → letterbox/centre a small drawing crisp).
-  // Canvas-node embeds keep the uncapped fill (maxScale = Infinity) and, after the one-time
-  // mount fit, behave as a fixed-scale window that extends/clips on node resize.
-  const maxFitScale = canvasNode ? Infinity : 1;
+  // Fits only ever shrink a drawing, never zoom it in (maxScale = 1), so strokes show at the size
+  // they were drawn and a small drawing sits centred. After the mount fit a Canvas node is a
+  // fixed-scale window that extends/clips on node resize.
+  const maxFitScale = 1;
 
   const box0 = hostBox();
   // Share the plugin's single ToolManager so tool/colour/size are global across every

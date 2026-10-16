@@ -1308,10 +1308,9 @@ describe('embed shared-document sync (B2: multi-surface single source of truth)'
   });
 });
 
-// markdown-embed-frame: a Markdown embed (no .canvas-node ancestor) is a fixed-scale
-// fit-to-content FRAME that never upscales past natural size (maxScale = 1); a canvas-node
-// embed keeps the uncapped fill behavior.
-describe('embed fit cap (markdown-embed-frame: no-upscale on Markdown embeds)', () => {
+// Markdown embeds and Canvas nodes both fit with maxScale = 1: a fit shrinks a big drawing
+// but never zooms a small one in, so strokes show at the size they were drawn.
+describe('embed fit cap (never zoom in)', () => {
   let repo: IDrawingRepository;
   let filePath: string;
   let settings: PluginSettings;
@@ -1336,7 +1335,7 @@ describe('embed fit cap (markdown-embed-frame: no-upscale on Markdown embeds)', 
     cleanup();
   });
 
-  it('a canvas-node embed fits UNCAPPED (maxScale is not 1, so it still fills the node)', async () => {
+  it('a canvas-node embed never zooms in either (maxScale 1)', async () => {
     const canvasNode = document.createElement('div');
     canvasNode.className = 'canvas-node';
     const embedEl = makeEmbed();
@@ -1348,8 +1347,7 @@ describe('embed fit cap (markdown-embed-frame: no-upscale on Markdown embeds)', 
 
     expect(engine.fitReferenceSize).toHaveBeenCalled();
     const args = engine.fitReferenceSize.mock.calls[0];
-    expect(args[3]).not.toBe(1);
-    expect(args[3]).toBe(Infinity);
+    expect(args[3]).toBe(1);
 
     cleanup();
     document.body.removeChild(canvasNode);

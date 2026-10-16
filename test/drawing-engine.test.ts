@@ -796,6 +796,25 @@ describe('DrawingEngine — stable reference-size fit (B3 idempotent embed fit)'
     expect(scaleAfter).toBeCloseTo(scaleBefore, 10);
   });
 
+  // A new drawing has no strokes yet but is saved as 800x600. Fitting that size into a
+  // smaller node would open it zoomed out, so strokes would be saved larger than drawn.
+  it('an empty drawing opens at 1:1 whatever its saved size', () => {
+    const engine = new DrawingEngine(createMockContainer(), 800, 600);
+    engine.setDisplaySize(398, 298);
+    engine.fitReferenceSize(800, 600, 0, 1, 8);
+
+    expect(engine.getViewTransform()).toEqual({ scale: 1, offsetX: 0, offsetY: 0 });
+  });
+
+  it('refitToContent never zooms past maxScale', () => {
+    const engine = new DrawingEngine(createMockContainer(), 800, 600);
+    engine.loadStrokes([strokeAt(0, 0, 100)]);
+    engine.setDisplaySize(800, 600);
+    engine.refitToContent(0, 16, 1);
+
+    expect(engine.getViewTransform().scale).toBeCloseTo(1, 5);
+  });
+
   it('degenerate reference (zero area) yields the identity transform', () => {
     const engine = new DrawingEngine(createMockContainer(), 800, 600);
     engine.loadStrokes([strokeAt(0, 0, 100)]);
