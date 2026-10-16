@@ -107,7 +107,7 @@ describe('ExportSvgUseCase', () => {
     expect(svg).toContain('<svg');
   });
 
-  it('exports file without folder prefix in basename', async () => {
+  it('exports a drawing at the vault root to the vault root', async () => {
     repo.files.set('drawing.blackboard', makeFile({
       strokes: [{ id: 's1', tool: 'pen', color: '#fff', size: 2, opacity: 1, points: [[0, 0, 0.5]], hasPressure: false, timestamp: 0 }],
     }));

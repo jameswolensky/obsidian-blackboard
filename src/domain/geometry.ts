@@ -15,15 +15,15 @@ export interface Bounds { x: number; y: number; width: number; height: number; }
 export interface ViewTransform { scale: number; offsetX: number; offsetY: number; }
 
 /**
- * Letterbox transform mapping a content bounding box (drawing-space) into a display
- * box (CSS px): aspect-preserved, centred. `null`/zero-area content -> identity so a
- * fresh drawing maps 1 display px to 1 drawing unit. A content point (cx, cy) maps to
- * screen as (cx * scale + offsetX, cy * scale + offsetY).
+ * Letterbox transform that fits a content bounding box (drawing space) into a display
+ * box (CSS px), keeping the aspect ratio and centring it. `null` or zero-area content
+ * returns the identity, so a fresh drawing maps 1 display px to 1 drawing unit. A content
+ * point (cx, cy) maps to screen as (cx * scale + offsetX, cy * scale + offsetY).
  *
- * An optional `maxScale` cap (default unbounded) clamps the fitted scale to at most
- * `maxScale`; when the cap binds the content is centred/letterboxed in the box at the capped
- * scale (via the existing offset math) rather than enlarged to fill it. A Markdown embed
- * passes `maxScale = 1` so a small drawing is shown crisp at natural size, never upscaled.
+ * `maxScale` (default unbounded) caps the fitted scale. When the cap applies, the content
+ * is centred in the box at the capped scale instead of enlarged to fill it. Embeds and the
+ * full-page view pass `maxScale = 1`, so a small drawing shows at the size it was drawn and
+ * is never enlarged.
  */
 export function fitContentToBox(box: Box, content: Bounds | null, padding = 0, maxScale = Infinity, screenMargin = 0): ViewTransform {
   if (box.width <= 0 || box.height <= 0 || !content || content.width <= 0 || content.height <= 0) {
@@ -42,16 +42,15 @@ export function fitContentToBox(box: Box, content: Bounds | null, padding = 0, m
   return { scale, offsetX, offsetY };
 }
 
-/** Inverse of fitContentToBox: screen (box-local px) -> drawing-space. */
+/** Inverse of fitContentToBox: screen (box-local px) to drawing space. */
 export function screenToContent(px: number, py: number, t: ViewTransform): { x: number; y: number } {
   return { x: (px - t.offsetX) / t.scale, y: (py - t.offsetY) / t.scale };
 }
 
 /**
- * Centre a content bounding box inside a display box at scale 1 (no zoom). Used by the
- * standalone view so a small drawing opens with a comfortable, centred working area.
- * Null/zero-area content places the drawing-space origin at the box centre. A content
- * point (cx, cy) maps to screen as (cx + offsetX, cy + offsetY).
+ * Centre a content bounding box inside a display box at scale 1 (no zoom). Null or
+ * zero-area content puts the drawing-space origin at the box centre. A content point
+ * (cx, cy) maps to screen as (cx + offsetX, cy + offsetY).
  */
 export function centerContentInBox(box: Box, content: Bounds | null): ViewTransform {
   if (box.width <= 0 || box.height <= 0) return { scale: 1, offsetX: 0, offsetY: 0 };
@@ -63,7 +62,10 @@ export function centerContentInBox(box: Box, content: Bounds | null): ViewTransf
   return { scale: 1, offsetX: box.width / 2 - cx, offsetY: box.height / 2 - cy };
 }
 
-/** Display size an embed should auto-fit to, clamped to a sensible minimum. */
+/**
+ * Natural display size of a drawing: its content size, or 400x300 when the content has
+ * no area.
+ */
 export function naturalContentSize(content: Bounds): { width: number; height: number } {
   const MIN_W = 400, MIN_H = 300;
   if (content.width <= 0 || content.height <= 0) return { width: MIN_W, height: MIN_H };

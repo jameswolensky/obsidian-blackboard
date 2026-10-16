@@ -16,7 +16,7 @@ export default defineConfig({
     globals: true,
     environment: "jsdom",
     setupFiles: ["test/setup.ts"],
-    // Never pick up test copies inside git worktrees (parallel sessions) — they double-count.
+    // Skip test copies inside git worktrees, which would otherwise run twice.
     exclude: [...configDefaults.exclude, "**/.worktrees/**"],
   },
 });

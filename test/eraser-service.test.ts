@@ -122,7 +122,7 @@ describe('eraseAtPoint', () => {
   });
 });
 
-describe('findStrokesAtPoint — additional', () => {
+describe('findStrokesAtPoint, more cases', () => {
   it('direct vertex hit returns stroke id', () => {
     const strokes = [makeStroke('s1', [[50, 50, 0.5], [60, 60, 0.5]])];
     const result = findStrokesAtPoint(strokes, 50, 50, 10);
@@ -156,7 +156,7 @@ describe('findStrokesAtPoint — additional', () => {
   });
 });
 
-describe('eraseAtPoint — minimum size', () => {
+describe('eraseAtPoint minimum size', () => {
   it('minimum eraser size 15px enforced', () => {
     const strokeManager = new StrokeManager();
     strokeManager.addStroke(makeStroke('s1', [[10, 10, 0.5], [20, 10, 0.5]]));

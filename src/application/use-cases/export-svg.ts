@@ -9,7 +9,7 @@ export class ExportSvgUseCase {
     const { file } = await this.repo.load(drawingPath);
     if (file.strokes.length === 0) return;
 
-    // SVG exports use transparent background (intended as overlays)
+    // SVG exports have a transparent background so they work as overlays.
     const bg: Background = { type: 'blank', color: 'transparent', grid: false, gridSize: 20 };
     const svg = exportSvg(file.strokes, bg);
 

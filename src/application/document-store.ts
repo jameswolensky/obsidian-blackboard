@@ -25,27 +25,29 @@ interface Entry {
   subscribers: Map<symbol, () => void>;
   refCount: number;
   /**
-   * Serialized forms we've written to disk (or accepted as an external edit) that are still
-   * echoing back through the vault `modify` event. The `modify` handler is async, so an echo
-   * of an EARLIER save can arrive AFTER a newer commit has advanced the document — a single
-   * "last written" slot mis-reads that stale echo as a foreign edit and reverts, silently
-   * deleting the strokes drawn in between. Remembering every recent self-write closes that race.
+   * Serialized contents this store wrote to disk (or accepted as an external edit), which
+   * may still echo back through the vault `modify` event. The `modify` handler is async, so
+   * the echo of an EARLIER save can arrive AFTER a newer commit has moved the document on.
+   * With only a single "last written" slot, that stale echo looks like a foreign edit and the
+   * document reverts to it, deleting the strokes drawn in between. Remembering every recent
+   * write closes that race.
    */
   seen: Set<string>;
   saveTimer: ReturnType<typeof setTimeout> | null;
   repo: IDrawingRepository;
 }
 
-/** How many recent self-writes to remember. Far above any realistic number of in-flight
- * disk writes, so a delayed echo is always still recognized, while the set stays bounded. */
+/** How many recent writes to remember. Far more than the disk writes that can be in flight
+ * at once, so a delayed echo is still recognized, and the set stays bounded. */
 const SEEN_LIMIT = 32;
 
 /**
  * Single source of truth for `.blackboard` stroke data, keyed by file path. Every mounted
- * surface (standalone view, Markdown embed, Canvas node) of the same file shares one canonical
- * document: a commit from any surface updates the canonical strokes, persists once (debounced),
- * and synchronously refreshes the other surfaces — so drawing on one is immediately visible on
- * all (B2). External edits arrive via reconcile() and are suppressed when they echo our own write.
+ * surface (full-page view, Markdown embed, Canvas node) of the same file shares one canonical
+ * document. A commit from any surface updates the canonical strokes, saves once (debounced),
+ * and synchronously refreshes the other surfaces, so a stroke drawn on one shows on all of
+ * them right away. External edits arrive through reconcile(), which ignores echoes of the
+ * store's own writes.
  */
 export class DocumentStore {
   private entries = new Map<string, Entry>();
@@ -81,12 +83,12 @@ export class DocumentStore {
     };
   }
 
-  /** External-edit channel (vault `modify`): refresh from disk unless the content is our own write. */
+  /** External edits (vault `modify`): refresh from disk unless the content is one of the store's own writes. */
   reconcile(path: string, diskContent: string): void {
     const entry = this.entries.get(path);
     if (!entry) return;
-    if (diskContent === serialize(entry.file)) return; // already our canonical state — nothing to do
-    if (entry.seen.has(diskContent)) return; // a (possibly delayed) echo of one of our own writes
+    if (diskContent === serialize(entry.file)) return; // already the canonical state
+    if (entry.seen.has(diskContent)) return; // an echo (possibly delayed) of one of the store's own writes
     const { file } = deserialize(diskContent);
     entry.file = file;
     this.remember(entry, diskContent); // remember accepted bytes so duplicate echoes are ignored too
@@ -103,7 +105,7 @@ export class DocumentStore {
     this.scheduleSave(path);
   }
 
-  /** Record a serialized content as one of ours, evicting the oldest to stay bounded. */
+  /** Remember serialized content as one of the store's own writes, dropping the oldest past SEEN_LIMIT. */
   private remember(entry: Entry, content: string): void {
     entry.seen.add(content);
     while (entry.seen.size > SEEN_LIMIT) {
@@ -115,9 +117,9 @@ export class DocumentStore {
 
   /**
    * Immediately write every path with a pending debounced save. Called when the app is about
-   * to be backgrounded/suspended (iPad lock screen, tab hidden) — otherwise a stroke drawn
-   * within the debounce window before suspension is lost, because the timer never fires while
-   * the WebView is frozen. Writes the canonical document, so it can never blank a drawing.
+   * to be backgrounded or suspended (iPad lock screen, tab hidden). Without it, a stroke drawn
+   * in the debounce window before suspension is lost, because the timer never fires while the
+   * WebView is frozen. It writes the canonical document, so it can never blank a drawing.
    */
   flushAll(): void {
     for (const [path, entry] of this.entries) {
@@ -136,8 +138,8 @@ export class DocumentStore {
     if (entry.saveTimer !== null) window.clearTimeout(entry.saveTimer);
     entry.saveTimer = window.setTimeout(() => {
       entry.saveTimer = null;
-      // Remember exactly what we're about to write BEFORE its `modify` echo can arrive, so a
-      // later reconcile recognizes it as our own even after newer commits move the document on.
+      // Remember exactly what is about to be written BEFORE its `modify` echo can arrive, so a
+      // later reconcile recognizes it even after newer commits move the document on.
       this.remember(entry, serialize(entry.file));
       void entry.repo.save(path, entry.file);
     }, this.saveDelayMs);

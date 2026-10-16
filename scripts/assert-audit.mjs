@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Assert openspec/specs/toolbar invariants against the latest device audit
+// Check the toolbar's expected sizes, shapes and colors against the latest device audit
 // (posted by src/dev/dev-bridge.ts to scripts/dev-server.mjs).
 // Usage: node scripts/assert-audit.mjs [--golden .devloop/golden-audit.json]
 import { readFileSync } from "node:fs";
@@ -19,7 +19,7 @@ ok(audit.toolbarPresent || audit.pillPresent, "neither toolbar nor pill present"
 const toolbarHidden = audit.toolbarPresent && audit.toolbarRect.width === 0;
 if (toolbarHidden) {
   failures.push(
-    "toolbar mounted but hidden (pill/no-surface state) — activate a drawing on the device and re-audit for geometry",
+    "toolbar mounted but hidden (pill or no-surface state). Activate a drawing on the device and re-audit for geometry",
   );
 }
 if (audit.toolbarPresent && !toolbarHidden) {

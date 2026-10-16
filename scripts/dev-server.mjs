@@ -31,9 +31,9 @@ createServer((req, res) => {
       res.writeHead(200, { "content-type": "application/octet-stream" });
       return res.end(readFileSync(join(ROOT, ARTIFACTS[p.slice(7)])));
     }
-    // Serve the Tier 2 harness (and the stylesheet paths it links) from the same
-    // origin so its in-page fetch() verdict POST needs no CORS. Path layout matches
-    // the historical python http.server (repo root).
+    // Serve the WebKit harness in test/webkit (and the stylesheet it links) from the same
+    // origin, so the in-page fetch() that POSTs its verdict needs no CORS. Paths are
+    // relative to the repo root.
     if (req.method === "GET" && (p.startsWith("/test/webkit/") || p === "/styles.css")) {
       const rel = p.replace(/\.\./g, "").replace(/^\//, "");
       const type = rel.endsWith(".css")

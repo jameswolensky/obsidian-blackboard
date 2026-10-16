@@ -3,7 +3,7 @@ import type { DrawingSurface } from './drawing-surface';
 /**
  * Tracks the single active drawing surface and notifies listeners (the global
  * toolbar) when it changes, so one shared toolbar can drive whichever drawing is
- * focused. Surfaces call setActive(this) on focus/open and clearIfActive(this) on close.
+ * focused. Surfaces call setActive() on focus/open and unregister() on close.
  */
 export class SurfaceManager {
   private active: DrawingSurface | null = null;

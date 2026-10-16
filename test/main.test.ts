@@ -195,7 +195,8 @@ describe('BlackboardPlugin', () => {
 
       await plugin.onload();
 
-      // registerEvent is called for: layout-change (x2), modify, rename, delete, active-leaf-change
+      // registerEvent is called for: active-leaf-change, resize, layout-change (x3), editor-menu,
+      // modify, rename, delete
       expect(plugin.registerEvent).toHaveBeenCalled();
     });
 
@@ -207,7 +208,7 @@ describe('BlackboardPlugin', () => {
       expect(patchCanvas).toHaveBeenCalled();
     });
 
-    it('owns exactly one shared ToolManager and passes it to the view factory and patchCanvas (fix-tool-state-isolation)', async () => {
+    it('owns exactly one shared ToolManager and passes it to the view factory and patchCanvas', async () => {
       const plugin = createPlugin();
 
       await plugin.onload();
@@ -334,7 +335,7 @@ describe('BlackboardPlugin', () => {
       expect(args[5]).toBe(plugin.documentStore);
     });
 
-    it('vault modify handler calls exportSvg when autoExportSvg is true', async () => {
+    it('vault modify handler handles a .blackboard file without throwing', async () => {
       const plugin = createPlugin({ autoExportSvg: true });
       await plugin.onload();
 
@@ -350,7 +351,7 @@ describe('BlackboardPlugin', () => {
       // Should not throw - the handler catches errors internally
     });
 
-    it('vault rename handler renames SVG file', async () => {
+    it('vault rename handler handles a .blackboard file without throwing', async () => {
       const plugin = createPlugin({ autoExportSvg: true });
       await plugin.onload();
 
@@ -364,7 +365,7 @@ describe('BlackboardPlugin', () => {
       await renameHandler(tfile, 'old.blackboard');
     });
 
-    it('vault delete handler deletes SVG file', async () => {
+    it('vault delete handler handles a .blackboard file without throwing', async () => {
       const plugin = createPlugin({ autoExportSvg: true });
       await plugin.onload();
 
@@ -391,7 +392,7 @@ describe('BlackboardPlugin', () => {
       const tfile = Object.assign(new TFile(), { path: 'sub/new.blackboard', extension: 'blackboard' });
       await renameHandler(tfile, 'sub/old.blackboard');
 
-      // Sibling paths are used; the configured export folder is ignored (documents the inconsistency).
+      // Sibling paths are used and svgExportPath is ignored, although the export itself writes there.
       expect(renameSpy).toHaveBeenCalledWith('sub/old.svg', 'sub/new.svg');
     });
 
@@ -410,7 +411,7 @@ describe('BlackboardPlugin', () => {
       expect(deleteSpy).toHaveBeenCalledWith('sub/test.svg');
     });
 
-    it('vault modify handler does nothing when autoExportSvg is false', async () => {
+    it('vault modify handler runs without throwing when autoExportSvg is false', async () => {
       const plugin = createPlugin({ autoExportSvg: false });
       await plugin.onload();
 
@@ -423,7 +424,7 @@ describe('BlackboardPlugin', () => {
       }
     });
 
-    it('vault rename handler ignores non-blackboard files', async () => {
+    it('vault rename handler runs without throwing for a non-blackboard file', async () => {
       const plugin = createPlugin({ autoExportSvg: true });
       await plugin.onload();
 
@@ -436,7 +437,7 @@ describe('BlackboardPlugin', () => {
       }
     });
 
-    it('vault delete handler ignores non-blackboard files', async () => {
+    it('vault delete handler runs without throwing for a non-blackboard file', async () => {
       const plugin = createPlugin({ autoExportSvg: true });
       await plugin.onload();
 

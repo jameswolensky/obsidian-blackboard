@@ -22,9 +22,9 @@ export class ToolManager {
   }
 
   /**
-   * Apply per-tool defaults from settings to every tool at once, then select the active tool.
-   * Assigns each tool's color/size directly (unlike `setColor`/`setSize`, which only touch the
-   * active tool), so highlighter and eraser defaults are honored regardless of `activeTool`.
+   * Apply the given colors and sizes to every tool at once, then select `activeTool` if given.
+   * Sets each tool's color and size directly (`setColor`/`setSize` only change the active
+   * tool), so the highlighter and eraser values apply whichever tool is active.
    */
   setDefaults(defaults: Partial<ToolState>): void {
     if (defaults.penColor !== undefined) this.penColor_ = defaults.penColor;
@@ -60,12 +60,12 @@ export class ToolManager {
     return this.penColor_;
   }
 
-  /** Pen color regardless of the active tool — lets the toolbar tint the pen glyph. */
+  /** Pen color whatever the active tool is, so the toolbar can tint the pen icon. */
   get penColor(): string {
     return this.penColor_;
   }
 
-  /** Highlighter color regardless of the active tool — lets the toolbar tint the highlighter glyph. */
+  /** Highlighter color whatever the active tool is, so the toolbar can tint the highlighter icon. */
   get highlighterColor(): string {
     return this.highlighterColor_;
   }

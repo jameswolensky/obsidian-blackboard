@@ -4,7 +4,7 @@ import { StrokeManager } from '../domain/stroke-manager';
 import { ToolManager } from '../domain/tool-manager';
 import { fitContentToBox, screenToContent, centerContentInBox, type ViewTransform } from '../domain/geometry';
 
-/** View-scale clamp shared by the presentation-facing transform mutators. */
+/** Zoom limits applied by setView and zoomAt. */
 const MIN_SCALE = 0.1;
 const MAX_SCALE = 8;
 
@@ -35,9 +35,9 @@ export class DrawingEngine {
   constructor(container: HTMLElement, width?: number, height?: number, toolManager?: ToolManager) {
     this.container = container;
     this.strokeManager = new StrokeManager();
-    // Tool state is global: when the plugin injects a shared ToolManager, every surface
-    // reads and drives the same selection (fix-tool-state-isolation). Falls back to a
-    // private manager for back-compat (standalone construction / tests).
+    // Tool state is global: the plugin passes in its one shared ToolManager, so every surface
+    // reads and changes the same tool, color and size. Without one (tests, direct
+    // construction) the engine makes its own.
     this.toolManager = toolManager ?? new ToolManager();
 
     this.drawingWidth = width ?? (container.clientWidth || 800);
@@ -214,8 +214,8 @@ export class DrawingEngine {
   }
 
   /**
-   * Standalone view: size the backing store to a CSS box and centre the content at
-   * scale 1 (no zoom). Empty content centres the drawing-space origin in the box.
+   * Size the backing store to a CSS box and centre the content at scale 1 (no zoom).
+   * Empty content centres the drawing-space origin in the box.
    */
   centerInBox(boxW: number, boxH: number): void {
     if (boxW <= 0 || boxH <= 0) return;
@@ -229,9 +229,8 @@ export class DrawingEngine {
   }
 
   /**
-   * Replace the view transform wholesale (presentation-facing pan/zoom). `scale` is clamped
-   * to [MIN_SCALE, MAX_SCALE]; the render pipeline is untouched (it still composes
-   * `view.scale`/`view.offset` with DPR). Marks both layers dirty and requests a render.
+   * Replace the whole view transform (used for pan and zoom). `scale` is clamped to
+   * [MIN_SCALE, MAX_SCALE]. Marks both layers dirty and requests a render.
    */
   setView(view: ViewTransform): void {
     this.view = {
@@ -299,18 +298,18 @@ export class DrawingEngine {
   }
 
   /**
-   * Fit content to the display box using an explicit caller-supplied reference size
-   * (the file's saved `width`/`height`) instead of the live recomputed content bounds.
+   * Fit content to the display box using a reference size from the caller (the file's
+   * saved `width`/`height`) instead of the live content bounds.
    *
-   * The reference rectangle is anchored at the live content origin but takes its
-   * DIMENSIONS from the caller, so the resulting scale is `min(boxW/refW, boxH/refH)`
-   * regardless of how the content has since grown. Because the saved dimensions are the
-   * stable description of the drawing at save time, fitting against them reproduces the
-   * same scale across a save→reload round trip — existing strokes keep their on-screen
-   * size when an embedded surface is unmounted and remounted after an edit (B3). Anchoring
-   * at the live origin makes the content's top-left land at the same screen position too,
-   * since the origin cancels in the letterbox offset. Like refitToContent/resizeBox, apply
-   * this on layout/resize only, never per stroke.
+   * The reference rectangle starts at the live content origin but takes its DIMENSIONS
+   * from the caller, so the scale is `min(boxW/refW, boxH/refH)` (capped by `maxScale`)
+   * however much the content has grown since. The saved dimensions describe the drawing as
+   * it was saved, so fitting against them gives the same scale after a save and reload:
+   * existing strokes keep their on-screen size when an embed is unmounted and remounted
+   * after an edit. Starting at the live origin puts the content's top-left at the same
+   * screen position too, since the origin cancels out of the letterbox offset. An empty
+   * drawing gets the identity view (scale 1, no offset). Like refitToContent and resizeBox,
+   * call this on layout or resize only, never per stroke.
    */
   fitReferenceSize(refWidth: number, refHeight: number, padding = 0, maxScale = Infinity, screenMargin = 0): void {
     const b = this.getContentBounds();

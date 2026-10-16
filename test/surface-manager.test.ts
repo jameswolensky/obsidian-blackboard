@@ -207,7 +207,7 @@ describe('SurfaceManager', () => {
     });
   });
 
-  describe('stroke-end notification (QA3: undo arrow must light up after the first stroke)', () => {
+  describe('stroke-end notification (the undo arrow lights up after the first stroke)', () => {
     it('notifyStrokeEnd calls every onStrokeEnd listener', () => {
       const mgr = new SurfaceManager();
       const cb = vi.fn();

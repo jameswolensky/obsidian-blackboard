@@ -1,9 +1,9 @@
 import type { TFile } from 'obsidian';
 
 /**
- * Obsidian Canvas internals — undocumented, modeled structurally from observed usage.
- * Only the members this plugin actually touches are declared; members are optional
- * wherever the calling code already guards for their absence.
+ * Obsidian Canvas internals. These are undocumented, so the types are modeled on what the
+ * plugin has observed at runtime. Only the members this plugin touches are declared, and a
+ * member is optional wherever the calling code already checks that it exists.
  */
 
 /** A Canvas node (text card or file card). */
@@ -36,8 +36,8 @@ export interface CanvasViewLike {
 }
 
 /**
- * @jaames/iro color picker — typed structurally from the members this plugin uses,
- * since iro's shipped types don't cover this call pattern.
+ * @jaames/iro color picker, typed from the members this plugin uses (iro's shipped types
+ * don't cover this call pattern).
  */
 export interface IroColorLike {
   hexString: string;

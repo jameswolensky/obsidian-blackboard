@@ -55,7 +55,7 @@ vi.mock('../src/infrastructure/canvas-renderer', () => {
       constructor(_container?: HTMLElement, width?: number, height?: number, toolManager?: any) {
         if (width !== undefined) this.drawingWidth = width;
         if (height !== undefined) this.drawingHeight = height;
-        // Honor an injected shared ToolManager (fix-tool-state-isolation).
+        // Honor an injected shared ToolManager.
         if (toolManager) this.toolManager = toolManager;
         engineInstances.push(this);
       }
@@ -129,7 +129,7 @@ function flushPromises(): Promise<void> {
   return new Promise((r) => setTimeout(r, 10));
 }
 
-describe('mountBlackboardEmbed – auto-show toolbar & Scribble guard', () => {
+describe('mountBlackboardEmbed: auto-show toolbar and Scribble guard', () => {
   let repo: IDrawingRepository;
   let filePath: string;
   let settings: PluginSettings;
@@ -171,12 +171,12 @@ describe('mountBlackboardEmbed – auto-show toolbar & Scribble guard', () => {
   });
 });
 
-// The document-level geometric guard is the core of harden-scribble-suppression: it must
+// The document-level geometric guard is the core of the Scribble suppression: it must
 // suppress Scribble even when the touch's DOM target is NOT the embed (the failure mode the
-// element-level guards cannot cover). NOTE: jsdom cannot reproduce iPadOS Scribble itself —
-// these tests verify the preventDefault hit-testing logic only; near-edge behaviour with a
-// real Apple Pencil is verified on-device (tasks.md §4, intentionally unchecked).
-describe('mountBlackboardEmbed – document-level geometric Scribble guard', () => {
+// element-level guards cannot cover). jsdom cannot reproduce iPadOS Scribble itself, so
+// these tests only verify the preventDefault hit-testing logic. Near-edge behaviour with a
+// real Apple Pencil has to be checked on an iPad.
+describe('mountBlackboardEmbed: document-level geometric Scribble guard', () => {
   let repo: IDrawingRepository;
   let filePath: string;
   let settings: PluginSettings;
@@ -255,7 +255,7 @@ describe('mountBlackboardEmbed – document-level geometric Scribble guard', () 
     cleanup = await mountBlackboardEmbed(repo, embedEl, filePath, settings);
     stubEmbedRect();
 
-    // A sibling element (not the drawing container) is the DOM target — the element-level
+    // A sibling element (not the drawing container) is the DOM target. The element-level
     // guards never fire, so only the document-level geometric guard can prevent default.
     const sibling = document.createElement('div');
     host.appendChild(sibling);
@@ -266,7 +266,7 @@ describe('mountBlackboardEmbed – document-level geometric Scribble guard', () 
     expect(e.defaultPrevented).toBe(true);
   });
 
-  it('QA2: suppresses a touch over the embed even when NOT reported as a stylus', async () => {
+  it('suppresses a touch over the embed even when NOT reported as a stylus', async () => {
     // On-device failure: in a Markdown embed the Apple Pencil is not reliably reported as
     // touchType 'stylus', so the stylus-gated guard did nothing and Scribble ate the stroke.
     cleanup = await mountBlackboardEmbed(repo, embedEl, filePath, settings);
@@ -417,7 +417,7 @@ describe('mountBlackboardEmbed – document-level geometric Scribble guard', () 
   });
 });
 
-describe('mountBlackboardEmbed – editor-focus suppression (QA: Scribble via Obsidian bottom toolbar)', () => {
+describe('mountBlackboardEmbed: editor-focus suppression (Scribble via the Obsidian bottom toolbar)', () => {
   let repo: IDrawingRepository;
   let filePath: string;
   let settings: PluginSettings;
@@ -484,7 +484,7 @@ describe('mountBlackboardEmbed – editor-focus suppression (QA: Scribble via Ob
   });
 });
 
-describe('mountBlackboardEmbed – always-live canvas', () => {
+describe('mountBlackboardEmbed: always-live canvas', () => {
   let repo: IDrawingRepository;
   let filePath: string;
   let settings: PluginSettings;
@@ -533,7 +533,7 @@ describe('mountBlackboardEmbed – always-live canvas', () => {
   it('does not set width/height on the host element (size comes from host, not file)', async () => {
     cleanup = await mountBlackboardEmbed(repo, embedEl, filePath, settings);
 
-    // Display size is the host's responsibility — embed must not override it
+    // Display size is the host's responsibility; the embed must not override it
     expect(embedEl.style.width).toBe('');
     expect(embedEl.style.height).toBe('');
   });
@@ -561,11 +561,11 @@ describe('host-driven sizing (no file-mutating resize handle)', () => {
   });
 
   it('calls setDisplaySize on mount from the drawing surface dimensions', async () => {
-    // The embed now measures the inner drawing container (the same element the pointer
+    // The embed measures the inner drawing container (the same element the pointer
     // mapping reads), not the outer embed element. jsdom does no layout, so the measured
-    // size is the fallback — assert the call happens with positive dimensions. Exact-
-    // dimension + zoom correctness is covered by drawing-engine.test.ts (screenToDrawing)
-    // and on-device verification.
+    // size is the fallback; assert the call happens with positive dimensions. Exact
+    // dimensions and zoom are covered by drawing-engine.test.ts (screenToDrawing) and by
+    // testing on a device.
     cleanup = await mountBlackboardEmbed(repo, embedEl, filePath, settings);
     const engineInstance = engineInstances.at(-1)!;
 
@@ -575,7 +575,7 @@ describe('host-driven sizing (no file-mutating resize handle)', () => {
     expect(h).toBeGreaterThan(0);
   });
 
-  it('fits to the saved reference dimensions on mount (B3 idempotent fit)', async () => {
+  it('fits to the saved reference dimensions on mount', async () => {
     cleanup = await mountBlackboardEmbed(repo, embedEl, filePath, settings);
     const engineInstance = engineInstances.at(-1)!;
 
@@ -601,7 +601,7 @@ describe('host-driven sizing (no file-mutating resize handle)', () => {
     document.dispatchEvent(upEvent);
     await flushPromises();
 
-    // Strokes never trigger a re-fit — the view changes only on mount and node resize.
+    // Strokes never trigger a re-fit; the view changes only on mount and node resize.
     expect(engineInstance.fitReferenceSize).not.toHaveBeenCalled();
   });
 
@@ -617,7 +617,7 @@ describe('host-driven sizing (no file-mutating resize handle)', () => {
     expect(engineInstance.endStroke).toHaveBeenCalledTimes(1);
   });
 
-  it('notifies the surface manager that a stroke ended on pointer-up (QA3: undo arrow lights up)', async () => {
+  it('notifies the surface manager that a stroke ended on pointer-up (so the undo arrow lights up)', async () => {
     const surfaceManager = { register: vi.fn(), unregister: vi.fn(), setActive: vi.fn(), notifyStrokeStart: vi.fn(), notifyStrokeEnd: vi.fn() } as any;
     cleanup = await mountBlackboardEmbed(repo, embedEl, filePath, settings, surfaceManager);
 
@@ -633,7 +633,7 @@ describe('host-driven sizing (no file-mutating resize handle)', () => {
     expect(surfaceManager.notifyStrokeEnd).toHaveBeenCalledTimes(1);
   });
 
-  it('does not save display size (width/height) to the file', async () => {
+  it('saves a v3 file with no viewport after a stroke', async () => {
     cleanup = await mountBlackboardEmbed(repo, embedEl, filePath, settings);
     const engineInstance = engineInstances.at(-1)!;
 
@@ -875,10 +875,10 @@ describe('embed pointer handling', () => {
     expect(engineInstance.beginStroke).not.toHaveBeenCalled();
   });
 
-  it('eraser tool calls eraseAt instead of beginStroke', async () => {
+  it('eraser tool does not begin a stroke', async () => {
     cleanup = await mountBlackboardEmbed(repo, embedEl, filePath, settings);
     const engineInstance = engineInstances.at(-1)!;
-    // The tool is seeded to pen from DEFAULT_TOOL_STATE; simulate the user selecting eraser.
+    // The tool starts on pen; simulate the user selecting the eraser.
     engineInstance.toolManager.activeTool = 'eraser';
 
     const drawingContainer = embedEl.querySelector('.blackboard-drawing-container') as HTMLElement;
@@ -922,7 +922,7 @@ describe('embed sizing', () => {
   });
 });
 
-describe('toolbar auto-show/hide', () => {
+describe('surface activation and pen pointer handling', () => {
   let repo: IDrawingRepository;
   let filePath: string;
   let settings: PluginSettings;
@@ -943,7 +943,7 @@ describe('toolbar auto-show/hide', () => {
     vi.useRealTimers();
   });
 
-  it('toolbar is not visible before first interaction', async () => {
+  it('does not render a per-embed .blackboard-toolbar', async () => {
     cleanup = await mountBlackboardEmbed(repo, embedEl, filePath, settings);
 
     expect(embedEl.querySelector('.blackboard-toolbar')).toBeNull();
@@ -966,12 +966,11 @@ describe('toolbar auto-show/hide', () => {
     expect(setActive).toHaveBeenCalled();
   });
 
-  // iPad bugs (issue #17-22 part 2): regressions where Pencil strokes drop mid-word
-  // and the toolbar wraps to 3 rows on narrow embeds.
+  // iPad regressions where Pencil strokes dropped mid-word (issues #17-22).
 
-  it('ignores a spurious pointercancel so the stroke still commits on pointerup', async () => {
-    // WKWebView can fire a stray pointercancel mid-stroke. The working model has no
-    // cancel handler, so the stroke survives and commits normally on pointerup.
+  it('a stray pointercancel mid-stroke still commits the stroke', async () => {
+    // WKWebView can fire a stray pointercancel mid-stroke. The cancel ends the stroke like
+    // a lift, so what was drawn still commits.
     cleanup = await mountBlackboardEmbed(repo, embedEl, filePath, settings);
     const drawingContainer = embedEl.querySelector('.blackboard-drawing-container') as HTMLElement;
     const engineInstance = engineInstances.at(-1)!;
@@ -1062,7 +1061,7 @@ describe('embed link-navigation suppression', () => {
     cleanup = await mountBlackboardEmbed(repo, embedEl, filePath, settings);
 
     // A bubble-phase listener Obsidian (or anything) adds AFTER mount must not see the
-    // event — the embed's capture-phase handler runs stopImmediatePropagation first.
+    // event: the embed's capture-phase handler runs stopImmediatePropagation first.
     const docClick = vi.fn();
     document.addEventListener('click', docClick);
 
@@ -1135,7 +1134,7 @@ describe('embed canvas-node content blocker', () => {
   });
 });
 
-describe('embed shared tool state (fix-tool-state-isolation)', () => {
+describe('embed shared tool state', () => {
   let repo: IDrawingRepository;
   let filePath: string;
   let settings: PluginSettings;
@@ -1169,7 +1168,7 @@ describe('embed shared tool state (fix-tool-state-isolation)', () => {
   });
 });
 
-describe('embed shared-document sync (B2: multi-surface single source of truth)', () => {
+describe('embed shared-document sync (one source of truth across surfaces)', () => {
   let repo: IDrawingRepository;
   let filePath: string;
   let settings: PluginSettings;
@@ -1330,7 +1329,7 @@ describe('embed fit cap (never zoom in)', () => {
 
     expect(engine.fitReferenceSize).toHaveBeenCalled();
     const args = engine.fitReferenceSize.mock.calls[0];
-    // fitReferenceSize(refWidth, refHeight, padding=8, maxScale=1)
+    // fitReferenceSize(refWidth, refHeight, padding=0, maxScale=1, screenMargin)
     expect(args[3]).toBe(1);
     cleanup();
   });
@@ -1354,11 +1353,11 @@ describe('embed fit cap (never zoom in)', () => {
   });
 });
 
-// canvas-node-extend-on-resize: a canvas-node embed is a fixed-scale frame. A node resize is
-// keyed off the .canvas-node element's LOGICAL size (offsetWidth/offsetHeight) and position;
-// it calls resizeBox (right/bottom anchor) and panBy (left/top anchor), never a re-fit. Pure
-// canvas zoom (logical size unchanged) is a no-op.
-describe('canvas-node frame on resize (canvas-node-extend-on-resize)', () => {
+// A canvas-node embed is a fixed-scale frame. A node resize is keyed off the .canvas-node
+// element's LOGICAL size (offsetWidth/offsetHeight) and position; it calls resizeBox
+// (right/bottom anchor) and panBy (left/top anchor), never a re-fit. Pure canvas zoom
+// (logical size unchanged) is a no-op.
+describe('canvas-node frame on resize', () => {
   let repo: IDrawingRepository;
   let filePath: string;
   let settings: PluginSettings;
@@ -1560,8 +1559,8 @@ describe('canvas-node frame on resize (canvas-node-extend-on-resize)', () => {
   });
 });
 
-// markdown-embed-frame: a Markdown embed (no canvas-node) still RE-FITS on host resize,
-// with the maxScale = 1 cap carried through.
+// A Markdown embed (no canvas-node) still RE-FITS on host resize, with the maxScale = 1
+// cap carried through.
 describe('markdown embed re-fits on host resize with the maxScale cap', () => {
   let repo: IDrawingRepository;
   let filePath: string;
@@ -1608,7 +1607,7 @@ describe('markdown embed re-fits on host resize with the maxScale cap', () => {
   });
 });
 
-describe('unmountAllEmbeds — plugin reload lifecycle', () => {
+describe('unmountAllEmbeds: plugin reload lifecycle', () => {
   it('unmounts every live embed so a new plugin instance can re-mount them', async () => {
     const { mountBlackboardEmbed, unmountAllEmbeds } = await import('../src/presentation/embed');
     const repo = makeRepo();

@@ -9,7 +9,7 @@ const prod = process.argv[2] === "production";
 // __DEV_BUILD__ gates src/dev/* out of release builds (tree-shaken).
 // __DEV_SERVER__ lets the iPad resolve this Mac over mDNS without hardcoding an IP.
 // os.hostname() can return a non-Bonjour name (e.g. "Mac.localdomain"), so on macOS
-// use the real Bonjour LocalHostName — that's what iOS devices can resolve via mDNS.
+// use the real Bonjour LocalHostName, which is what iOS devices resolve over mDNS.
 function devHost() {
   if (process.platform === "darwin") {
     try {

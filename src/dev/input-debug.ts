@@ -1,8 +1,7 @@
-// On-screen input event logger for diagnosing stylus behavior on devices where a
-// remote console isn't available (e.g. Apple Pencil in Obsidian's iPad WKWebView).
-// The diagnostics overlay ships dormant: `inputDebugEnabled` stays false in release
-// builds (no user-facing command toggles it). `toggleInputDebug` is retained for
-// local development — flip it from a temporary command or the console when debugging.
+// On-screen input event logger for diagnosing stylus behavior on devices with no remote
+// console (for example the Apple Pencil in Obsidian's iPad WKWebView). Release builds
+// leave it out entirely, since every call to it sits behind __DEV_BUILD__. Nothing calls
+// `toggleInputDebug`; wire it to a temporary command while debugging.
 
 const EVENTS = [
   'pointerdown', 'pointermove', 'pointerup', 'pointercancel',

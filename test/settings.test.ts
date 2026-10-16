@@ -29,22 +29,23 @@ describe('BlackboardSettingTab', () => {
 
     tab.display();
 
-    // Review guideline: headings come from new Setting(...).setHeading(), sentence case.
+    // Obsidian's plugin review guidelines: headings come from new Setting(...).setHeading(), in
+    // sentence case.
     expect(tab.containerEl.querySelectorAll('h2')).toHaveLength(0);
     const headings = tab.containerEl.querySelectorAll('.setting-item-heading .setting-item-name');
     const texts = Array.from(headings).map((h) => h.textContent);
     expect(texts).toEqual(['File storage', 'Appearance', 'Toolbar palette', 'Toolbar']);
   });
 
-  it('renders eight palette color controls in its own section, not under Drawing Defaults', () => {
+  it('renders eight palette color pickers plus the Board background picker, and no Drawing Defaults heading', () => {
     const tab = createTab();
     const settingSpy = vi.spyOn(Setting.prototype, 'addColorPicker');
 
     tab.display();
 
-    // Eight palette color pickers + one Board background picker.
+    // Eight palette color pickers plus one Board background picker.
     expect(settingSpy).toHaveBeenCalledTimes(9);
-    // No Drawing Defaults section exists at all.
+    // No Drawing Defaults heading.
     const texts = Array.from(tab.containerEl.querySelectorAll('h2')).map((h) => h.textContent);
     expect(texts).not.toContain('Drawing Defaults');
   });
@@ -60,7 +61,7 @@ describe('BlackboardSettingTab', () => {
     tab.display();
 
     const callbacks = (Setting as any)._lastOnChangeCallbacks;
-    // File Storage callbacks first: drawingFolder(0), newFileLocation(1), autoExportSvg(2);
+    // File storage callbacks first: drawingFolder(0), newFileLocation(1), autoExportSvg(2);
     // autoExportSvg is false by default so svgExportPath is absent. Then Appearance's
     // boardBackground(3). Palette pickers follow, starting at 4.
     const paletteStart = 4;
@@ -119,7 +120,7 @@ describe('BlackboardSettingTab', () => {
 
     const names = nameSpy.mock.calls.map((c) => c[0]);
     expect(names).toContain('Show toolbar pill');
-    // autoExportSvg toggle (1) + the new pill toggle (1) = 2 toggles when autoExportSvg is false.
+    // The autoExportSvg toggle plus the pill toggle = 2 toggles when autoExportSvg is false.
     expect(toggleSpy).toHaveBeenCalledTimes(2);
   });
 
@@ -133,7 +134,8 @@ describe('BlackboardSettingTab', () => {
 
     tab.display();
 
-    // The pill toggle is the LAST registered onChange (after File Storage + 8 palette pickers).
+    // The pill toggle is the LAST registered onChange (after File storage, Board background and
+    // the 8 palette pickers).
     const callbacks = (Setting as any)._lastOnChangeCallbacks;
     const last = callbacks[callbacks.length - 1];
     await last(false);
@@ -142,7 +144,7 @@ describe('BlackboardSettingTab', () => {
     expect(plugin.saveSettings).toHaveBeenCalled();
   });
 
-  it('renders the File Storage controls', () => {
+  it('renders the File storage controls', () => {
     const tab = createTab();
     const settingSpy = vi.spyOn(Setting.prototype, 'setName');
 
@@ -250,7 +252,7 @@ describe('BlackboardSettingTab', () => {
     // Stub display to prevent infinite loop (autoExportSvg onChange calls this.display())
     const displaySpy = vi.spyOn(tab, 'display').mockImplementation(() => {});
 
-    // The toggle for autoExportSvg - 3rd callback: drawingFolder, newFileLocation, autoExportSvg
+    // autoExportSvg is the 3rd callback: drawingFolder, newFileLocation, autoExportSvg
     const callbacks = (Setting as any)._lastOnChangeCallbacks;
     await callbacks[2](true);
 
@@ -269,7 +271,7 @@ describe('BlackboardSettingTab', () => {
     tab.display();
 
     const callbacks = (Setting as any)._lastOnChangeCallbacks;
-    // When autoExportSvg is true, svgExportPath is added after autoExportSvg toggle
+    // When autoExportSvg is true, svgExportPath follows the autoExportSvg toggle:
     // drawingFolder(0), newFileLocation(1), autoExportSvg(2), svgExportPath(3)
     await callbacks[3]('exports/svg');
 

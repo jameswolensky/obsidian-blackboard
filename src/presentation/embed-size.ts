@@ -1,14 +1,6 @@
 export interface EmbedSize { width: string | null; height: string | null; }
 
 /**
- * Parse Obsidian's embed size alias (the text after `|` in `![[file|...]]`):
- *   "640x480" -> {width:"640px", height:"480px"}
- *   "300"     -> {width:"300px", height:null}
- *   "100%"    -> {width:"100%",  height:null}
- *   "100%x400"-> {width:"100%",  height:"400px"}
- * Returns null when there's no usable size.
- */
-/**
  * Fit a drawing's saved size into the available note width, preserving aspect ratio.
  * Used for no-alias Markdown embeds so they render at the drawing's natural size,
  * scaled down (never up) to fit the note. Returns null for a degenerate saved size.
@@ -26,6 +18,14 @@ export function fitSavedEmbedSize(
   return { width: savedW, height: savedH };
 }
 
+/**
+ * Parse Obsidian's embed size alias (the text after `|` in `![[file|...]]`):
+ *   "640x480" -> {width:"640px", height:"480px"}
+ *   "300"     -> {width:"300px", height:null}
+ *   "100%"    -> {width:"100%",  height:null}
+ *   "100%x400"-> {width:"100%",  height:"400px"}
+ * Returns null when there's no usable size.
+ */
 export function parseEmbedSize(alias: string | null | undefined): EmbedSize | null {
   if (!alias) return null;
   const m = alias.trim().match(/^(\d+%?)(?:x(\d+))?$/);

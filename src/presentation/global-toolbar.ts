@@ -12,14 +12,15 @@ const TOOLS: Array<{ name: ToolName; icon: IconName; label: string }> = [
   { name: 'eraser', icon: 'eraser', label: 'Eraser' },
 ];
 // Pen and eraser share the finer pen scale; the highlighter gets its own markedly wider
-// scale so a marker reads like a marker rather than a fat pen (QA4). Each is five presets.
+// scale so a marker reads like a marker rather than a fat pen. Each is five presets.
 const PEN_SIZES = [2, 4, 8, 16, 30];
 const HIGHLIGHTER_SIZES = [8, 14, 22, 32, 44];
 
 /**
  * One floating toolbar shared by every drawing surface. Lives over the workspace,
- * follows the active surface (SurfaceManager), and collapses to a corner pill.
- * Hidden when no drawing is active.
+ * follows the active surface (SurfaceManager), and collapses to a pill on the right
+ * edge. With no active drawing it shows only the collapsed pill on a Canvas, and
+ * nothing anywhere else.
  */
 export class GlobalToolbar {
   private root: HTMLElement;
@@ -32,17 +33,17 @@ export class GlobalToolbar {
   private sizePopover!: HTMLElement;
   private sizeRow!: HTMLElement;
   private sizeBtn!: HTMLElement;
-  // iro.ColorPicker — typed loosely because iro ships no strict types we can import
+  // iro.ColorPicker, typed loosely because iro ships no strict types to import
   private picker: IroColorPickerLike | null = null;
   private surface: DrawingSurface | null = null;
   private anchorEl: HTMLElement | null = null;
-  // Anchor for the persistent pill on a Markdown/Canvas view that has no active surface yet.
-  // null on views where drawing makes no sense (graph, settings, …) so the toolbar stays hidden.
+  // Anchor for the persistent pill on a Canvas view that has no active surface yet. null on
+  // every other view type (Markdown, graph, settings, ...) so the pill stays hidden there.
   private hostEl: HTMLElement | null = null;
   // Controls that only act on an active surface; disabled in the no-surface (host-only) state.
   private surfaceControls: HTMLButtonElement[] = [];
   private collapsed = false;
-  // Gates the persistent no-surface pill on Markdown/Canvas hosts (settings.showToolbarPill).
+  // Gates the persistent no-surface pill on Canvas hosts (settings.showToolbarPill).
   // When false, a host with no active surface shows nothing; an active surface is unaffected.
   private pillEnabled = true;
   // True while the collapse is forced by the no-surface pill (not chosen by the user), so a
@@ -72,7 +73,7 @@ export class GlobalToolbar {
     // Starting to draw closes any open popover.
     this.unsubStroke = manager.onStrokeStart(() => this.closePopovers());
     // Finishing a stroke re-syncs derived controls (notably undo/redo enablement) so the
-    // undo arrow lights up immediately after the first stroke, not on the next tap (QA3).
+    // undo arrow lights up immediately after the first stroke, not on the next tap.
     this.unsubStrokeEnd = manager.onStrokeEnd(() => this.sync());
     this.measureSafeBottom();
     this.onResize = () => { this.measureSafeBottom(); this.reposition(); };
@@ -102,14 +103,14 @@ export class GlobalToolbar {
       btn.dataset.tool = t.name;
       btn.addEventListener('pointerup', (e) => {
         e.stopPropagation();
-        // Per-tool colour memory: each tool keeps its OWN stored colour, so switching
-        // tools must NOT carry the active colour across (carrying it turned the
+        // Per-tool colour memory: each tool keeps its own stored colour, so switching
+        // tools must not carry the active colour across (carrying it turned the
         // highlighter white when switching from a white pen). The shared ToolManager
-        // already holds pen/highlighter colours independently; we just select the tool.
+        // already holds pen/highlighter colours independently, so this only selects the tool.
         const prevTool = this.surface?.activeTool;
         // Selecting the eraser while the colour popover is open would otherwise lose the
         // in-progress wheel selection (the eraser has no colour). Save it to the
-        // previously-active tool FIRST, while pen/highlighter is still active, then switch.
+        // previously-active tool first, while pen/highlighter is still active, then switch.
         if (
           t.name === 'eraser' &&
           this.colorPopover.style.display !== 'none' &&
@@ -232,7 +233,7 @@ export class GlobalToolbar {
 
   /** (Re)build the popover dots for the active tool's preset scale, then highlight the dot
    * matching the active size. Called on build and each time the size popover opens, so
-   * switching tools swaps the pen scale for the highlighter scale (QA4). */
+   * switching tools swaps the pen scale for the highlighter scale. */
   private rebuildSizeDots(): void {
     const sizes = this.presetsForActiveTool();
     this.sizeRow.empty();
@@ -243,9 +244,9 @@ export class GlobalToolbar {
       dot.className = 'blackboard-gt-size-dot';
       dot.dataset.size = String(size);
       const inner = dot.createDiv({ cls: 'blackboard-gt-size-dot-inner' });
-      // Grade the dot diameter WITHIN the active scale (6px smallest → 22px largest) so every
-      // dot is visibly distinct — the highlighter's top sizes would otherwise clamp together
-      // under the absolute size→diameter mapping.
+      // Grade the dot diameter within the active scale (6px smallest to 22px largest) so every
+      // dot is visibly distinct. Under the absolute mapping (sizeToDotDiameter) the
+      // highlighter's top three sizes would all clamp to 22px.
       const t = max === min ? 0 : (size - min) / (max - min);
       const d = Math.round(6 + t * 16);
       inner.style.width = `${d}px`;
@@ -254,7 +255,7 @@ export class GlobalToolbar {
         e.stopPropagation();
         this.surface?.setSize(size);
         this.sync();
-        // Selecting a size minimizes the popover (visual feedback: choice made).
+        // Picking a size is a committed choice, so close the popover.
         this.closePopovers();
       });
       this.sizeRow.appendChild(dot);
@@ -267,9 +268,9 @@ export class GlobalToolbar {
     if (s) {
       // Anchor to the active view's content area so the toolbar never bleeds over sidebars.
       this.anchorEl = el ? ((el.closest('.view-content')) ?? el) : null;
-      // A real drawing means the full toolbar, not the pill. If we were only showing the
-      // no-surface pill (forced collapsed), expand now; but preserve a user's own collapse
-      // choice when switching between two actual drawings.
+      // A real drawing means the full toolbar, not the pill. If only the no-surface pill was
+      // showing (forced collapsed), expand now, but keep a user's own collapse choice when
+      // switching between two actual drawings.
       if (this.pillForcedByNoSurface) this.collapsed = false;
       this.pillForcedByNoSurface = false;
       this.setSurfaceControlsEnabled(true);
@@ -283,8 +284,8 @@ export class GlobalToolbar {
     }
   }
 
-  /** Tell the toolbar which Markdown/Canvas view content to anchor the persistent pill to when
-   * no surface is active. Pass null on views where drawing makes no sense (hides the toolbar). */
+  /** Tell the toolbar which Canvas view content to anchor the persistent pill to when no
+   * surface is active. Pass null on every other view (no pill there). */
   setHost(anchorEl: HTMLElement | null): void {
     this.hostEl = anchorEl ? ((anchorEl.closest('.view-content')) ?? anchorEl) : null;
     if (!this.surface) this.refreshNoSurface();
@@ -298,9 +299,9 @@ export class GlobalToolbar {
   }
 
   /** No active surface: show a collapsed pill anchored to the host (if any), else hide. The
-   * no-surface toolbar exposes only New-drawing and Insert-existing; the rest is disabled.
-   * When the persistent pill is disabled (settings.showToolbarPill === false), the host shows
-   * nothing — no pill and no toolbar. */
+   * no-surface toolbar keeps New drawing, Insert existing drawing and Minimize enabled; every
+   * control that needs a drawing is disabled. When the persistent pill is disabled
+   * (settings.showToolbarPill === false), the host shows nothing: no pill and no toolbar. */
   private refreshNoSurface(): void {
     if (this.hostEl && this.pillEnabled) {
       this.anchorEl = this.hostEl;
@@ -411,8 +412,8 @@ export class GlobalToolbar {
   }
 
   /** Wheel path: arbitrary colors set the active tool color but never rewrite
-   * paletteColors. Re-tint immediately — the glyph must not wait for the next
-   * sync() (tool switch), which is the 1.0.4 stale-tint regression. */
+   * paletteColors. Re-tint immediately: waiting for the next sync() (tool switch)
+   * left the glyph showing the old color. */
   private handleWheelColor(hex: string): void {
     this.surface?.setColor(hex);
     this.updateToolTints();
@@ -420,10 +421,10 @@ export class GlobalToolbar {
 
   private pickColor(color: string): void {
     this.surface?.setColor(color);
-    // Re-tint immediately (1.0.4 fix): color changes don't run sync().
+    // Re-tint immediately: color changes don't run sync().
     this.updateToolTints();
     if (this.picker) { try { this.picker.color.hexString = color; } catch { /* ignore */ } }
-    // Selecting a preset swatch is a committed choice — close the popover.
+    // Selecting a preset swatch is a committed choice, so close the popover.
     this.closePopovers();
   }
 
@@ -439,8 +440,8 @@ export class GlobalToolbar {
         try { this.picker.color.hexString = this.surface.activeColor; } catch { /* ignore */ }
       }
       // When the size popover opens, (re)build its dots for the active tool's scale (pen vs
-      // highlighter) and highlight the dot matching the active size — sync() only runs on
-      // selection otherwise.
+      // highlighter) and highlight the dot matching the active size. Otherwise sync() only
+      // runs on selection.
       if (which === 'size') this.rebuildSizeDots();
       this.positionPopover(target);
     }

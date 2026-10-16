@@ -55,7 +55,7 @@ export class BlackboardSettingTab extends PluginSettingTab {
           },
           {
             name: 'Auto-export SVG',
-            desc: 'Automatically export an SVG file alongside each drawing',
+            desc: 'Export an SVG copy of each drawing whenever it changes',
             control: { type: 'toggle', key: 'autoExportSvg' },
           },
           {
@@ -153,7 +153,7 @@ export class BlackboardSettingTab extends PluginSettingTab {
 
     new Setting(containerEl)
       .setName('Auto-export SVG')
-      .setDesc('Automatically export an SVG file alongside each drawing')
+      .setDesc('Export an SVG copy of each drawing whenever it changes')
       .addToggle((toggle) =>
         toggle.setValue(this.plugin.settings.autoExportSvg).onChange(async (value) => {
           this.plugin.settings.autoExportSvg = value;
@@ -174,7 +174,7 @@ export class BlackboardSettingTab extends PluginSettingTab {
         );
     }
 
-    // Appearance: the board (surface) background, distinct from the pen palette below.
+    // Appearance: the board (surface) background, separate from the toolbar palette below.
     new Setting(containerEl).setName('Appearance').setHeading();
 
     new Setting(containerEl)
@@ -190,8 +190,8 @@ export class BlackboardSettingTab extends PluginSettingTab {
         }),
       );
 
-    // Toolbar palette: its own dedicated section. The eight controls map 1:1 to the
-    // color-popover swatches, in display order (left-to-right, top-to-bottom).
+    // Toolbar palette: the eight controls map 1:1 to the color-popover swatches, in
+    // display order (left-to-right, top-to-bottom).
     new Setting(containerEl).setName('Toolbar palette').setHeading();
     for (let i = 0; i < this.plugin.settings.paletteColors.length; i++) {
       new Setting(containerEl)
@@ -211,8 +211,8 @@ export class BlackboardSettingTab extends PluginSettingTab {
     new Setting(containerEl)
       .setName('Show toolbar pill')
       .setDesc(
-        'Show the collapsed pen-icon pill on Markdown and Canvas pages with no active drawing, ' +
-          'so there is always a button to start drawing. Turn off to hide it until a drawing is active.',
+        'Show the collapsed pen-icon pill on Canvas with no active drawing, so there is ' +
+          'always a button to add one. Turn off to hide it until a drawing is active.',
       )
       .addToggle((toggle) =>
         toggle.setValue(this.plugin.settings.showToolbarPill).onChange(async (value) => {

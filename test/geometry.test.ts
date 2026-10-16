@@ -107,8 +107,8 @@ describe('fitContentToBox', () => {
       .toEqual({ scale: 1, offsetX: 0, offsetY: 0 });
   });
 
-  // markdown-embed-frame: an optional maxScale cap prevents upscaling past natural size and
-  // letterboxes/centers the content when the cap binds (a Markdown embed never zooms ink up).
+  // The optional maxScale cap stops the fit from enlarging past natural size and centres the
+  // content when the cap applies (embeds and the full-page view pass maxScale 1).
   it('caps the scale at maxScale and letterbox-centers instead of enlarging', () => {
     // 100x100 content into a 300x300 box would normally scale 3x to fill; maxScale 1 caps it.
     const t = fitContentToBox({ width: 300, height: 300 }, { x: 0, y: 0, width: 100, height: 100 }, 0, 1);
@@ -125,7 +125,7 @@ describe('fitContentToBox', () => {
     expect(t.offsetY).toBe(0);
   });
 
-  it('omitting maxScale preserves the existing unbounded (upscaling) behavior', () => {
+  it('omitting maxScale leaves the scale unbounded (it enlarges to fill)', () => {
     const t = fitContentToBox({ width: 300, height: 300 }, { x: 0, y: 0, width: 100, height: 100 });
     expect(t.scale).toBe(3);
   });

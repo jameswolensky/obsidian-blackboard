@@ -106,8 +106,8 @@
 }
 
 .blackboard-global-toolbar .blackboard-gt-btn {
-  /* iOS/WKWebView applies native button styling that overrides width/height/
-     border-radius — reset it so the flat radius below holds on WKWebView too. */
+  /* iOS WKWebView applies native button styling that overrides width, height and
+     border-radius. Reset it so the flat radius below holds on WKWebView too. */
   -webkit-appearance: none;
   appearance: none;
   box-sizing: border-box;
@@ -123,8 +123,8 @@
   /* Obsidian's native `button` box-shadow (--input-shadow) otherwise bleeds through the
      reset above, drawing a rounded-box shadow around every flat toolbar button. */
   box-shadow: none;
-  /* Flat tool buttons (pen/highlighter/eraser/undo/redo/insert/collapse): a small
-     radius, matching Obsidian's native controls. Only the color swatches and the
+  /* Flat toolbar buttons (tools, size, undo, redo, new, insert, minimize) get a small
+     radius to match Obsidian's native controls. Only the color swatches and the
      rainbow color well (.blackboard-gt-swatch) stay circular. */
   border-radius: var(--radius-s);
   color: var(--text-normal);
@@ -223,21 +223,21 @@
   touch-action: manipulation;
 }
 .blackboard-gt-size-dot:hover { background: var(--background-modifier-hover); }
-/* Selected size dot gets the same purple accent fill as the selected tool button
-   (.blackboard-gt-btn.active), so the chosen brush size reads as selected (QA3). */
+/* The selected size dot gets the same accent fill as the selected tool button
+   (.blackboard-gt-btn.active), so the chosen brush size reads as selected. */
 .blackboard-gt-size-dot.active { background: var(--interactive-accent); }
 .blackboard-gt-size-dot-inner { background: var(--text-normal); border-radius: 50%; }
 /* On the accent fill, the inner dot switches to the on-accent colour to stay visible. */
 .blackboard-gt-size-dot.active .blackboard-gt-size-dot-inner { background: var(--text-on-accent); }
 
 /* iPad cascade shield: Obsidian's `.is-tablet button:not(.clickable-icon)` rule
-   (specificity 0,2,1) injects padding into every <button>, turning the round controls
-   into ovals with their icons clipped to nothing — iPad only, since it's gated on
-   `.is-tablet`. Outrank it by specificity alone: each tripled-class selector below is
-   (0,3,0) plus the element, which beats (0,2,1) on specificity alone, independent of
-   theme/app stylesheet load order. The colorwell carries both the swatch and colorwell
-   classes, so its rule must stay AFTER the swatch rule (equal specificity, order wins).
-   Root cause and this replacement verified in real iPad WebKit via test/webkit. */
+   (specificity 0,2,1) adds padding to every <button>, which turns the round controls
+   into ovals and clips their icons to nothing. It only hits iPad, since it's gated on
+   `.is-tablet`. Each tripled-class selector below is (0,3,1) with the element, so it
+   wins on specificity alone, whatever order the theme and app stylesheets load in. The
+   color well carries both the swatch and colorwell classes, so its rule must stay AFTER
+   the swatch rule (equal specificity, so order wins). The cause and this fix were checked
+   in real iPad WebKit with the harness in test/webkit. */
 button.blackboard-gt-btn.blackboard-gt-btn.blackboard-gt-btn,
 button.blackboard-gt-swatch.blackboard-gt-swatch.blackboard-gt-swatch,
 button.blackboard-gt-colorwell.blackboard-gt-colorwell.blackboard-gt-colorwell,

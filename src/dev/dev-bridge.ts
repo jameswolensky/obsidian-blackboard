@@ -1,14 +1,15 @@
 /**
- * DEV BUILDS ONLY (gated by __DEV_BUILD__ in main.ts; tree-shaken from releases —
- * `npm run build` is grep-guarded against any of this shipping).
+ * DEV BUILDS ONLY. main.ts imports this behind __DEV_BUILD__, which esbuild sets to false
+ * for `npm run build`, so release builds leave it out.
  *
- * Deploy: polls the Mac dev server for new builds, hot-swaps this plugin's files
- * in the vault, and reloads the plugin — a ~5s build-to-device loop with no releases.
+ * Deploy: polls the Mac dev server every 3 seconds for a new build, writes this plugin's
+ * main.js and styles.css into the vault, and reloads the plugin. A build reaches the
+ * device in seconds with no release.
  *
- * Verify: collects device truth about the toolbar (computed styles, geometry, icon
- * presence) and POSTs it back to the dev server, where scripts/assert-audit.mjs
- * checks the openspec toolbar invariants. This is the machine-checkable answer to
- * "how does it ACTUALLY render on the iPad" — the gap behind releases 1.0.4–1.0.15.
+ * Verify: collects what the toolbar really looks like on the device (computed styles,
+ * geometry, icon presence) and POSTs it to the dev server, where scripts/assert-audit.mjs
+ * checks the toolbar's expected sizes, shapes and colors. That gives a checkable answer
+ * to "how does it ACTUALLY render on the iPad".
  *
  * Uses Obsidian's requestUrl (not fetch) so WKWebView CORS never applies.
  */
@@ -69,8 +70,8 @@ export function collectAudit(
   meta: { pluginVersion: string; buildHash: string },
 ): DevAudit {
   const win = doc.defaultView ?? window;
-  // Hot-swaps can theoretically orphan a stale toolbar; audit the VISIBLE instance
-  // and report how many exist so duplicates are detectable from the Mac.
+  // A hot-swap could leave a stale toolbar behind, so audit the VISIBLE one and report
+  // how many exist, which makes duplicates visible from the Mac.
   const toolbars = Array.from(doc.querySelectorAll('.blackboard-global-toolbar'));
   const toolbar =
     toolbars.find((t) => t.getBoundingClientRect().width > 0) ?? toolbars[0] ?? null;
@@ -137,10 +138,10 @@ export function startDevBridge(plugin: Plugin): void {
     try {
       version = (JSON.parse(await fetchText('/build/version')) as { version: string }).version;
     } catch {
-      return; // dev server not up / device off-LAN — stay quiet
+      return; // dev server not running or device off the LAN: stay quiet
     }
     if (knownVersion === '') {
-      knownVersion = version; // baseline at load; swap only on CHANGE after load
+      knownVersion = version; // first poll sets the baseline; swap only when it CHANGES
       return;
     }
     if (version === knownVersion) return;

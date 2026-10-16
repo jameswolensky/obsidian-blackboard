@@ -390,8 +390,6 @@ describe('BlackboardFileSuggestModal', () => {
 
 describe('patchCanvas', () => {
   it('registers event listeners for layout-change and active-leaf-change', () => {
-    // patchCanvas imported at top
-
     const mockPlugin = {
       registerEvent: vi.fn(),
       register: vi.fn(),
@@ -416,8 +414,6 @@ describe('patchCanvas', () => {
   });
 
   it('layout-change handler does NOT add the card-menu pencil button (toolbar is the only entry point)', () => {
-    // patchCanvas imported at top
-
     const menuEl = document.createElement('div');
     const mockPlugin = {
       registerEvent: vi.fn(),
@@ -450,8 +446,6 @@ describe('patchCanvas', () => {
   });
 
   it('layout-change handler does nothing when leaf is null', () => {
-    // patchCanvas imported at top
-
     const mockPlugin = {
       registerEvent: vi.fn(),
       register: vi.fn(),
@@ -471,8 +465,6 @@ describe('patchCanvas', () => {
   });
 
   it('layout-change handler removes a stale pencil button left by an older version', () => {
-    // patchCanvas imported at top
-
     const menuEl = document.createElement('div');
     const existingBtn = document.createElement('div');
     existingBtn.id = 'blackboard-add-drawing';
@@ -507,9 +499,9 @@ describe('patchCanvas', () => {
 
 describe('patchCanvasFileNodes (via patchCanvas layout-change handler)', () => {
   beforeEach(() => {
-    // Fake timers so patchCanvas's trailing setTimeout (line ~183) doesn't leak a
-    // real dangling timer into later tests. The layout-change handler we invoke runs
-    // patchCanvasFileNodes synchronously, so no timer advance is needed for assertions.
+    // Fake timers so patchCanvas's trailing setTimeout doesn't leak a real timer into
+    // later tests. The layout-change handler queues mounts that drain on animation frames,
+    // so runLayoutHandler advances one frame before the assertions.
     vi.useFakeTimers();
     vi.mocked(mountBlackboardEmbed).mockClear();
   });
@@ -593,7 +585,7 @@ describe('patchCanvasFileNodes (via patchCanvas layout-change handler)', () => {
     expect(releaseDetachedEmbeds).toHaveBeenCalled();
   });
 
-  it('threads the shared ToolManager through to mountBlackboardEmbed (fix-tool-state-isolation)', () => {
+  it('threads the shared ToolManager through to mountBlackboardEmbed (6th arg)', () => {
     const repo = createMockRepo();
     const node = fileNode('A.blackboard');
     const canvas = {
@@ -649,7 +641,7 @@ describe('patchCanvasFileNodes (via patchCanvas layout-change handler)', () => {
     expect(mountBlackboardEmbed).not.toHaveBeenCalled();
   });
 
-  it('does not mount a node that already hosts a live surface (.blackboard-static) — B5 single engine', () => {
+  it('does not mount a node that already hosts a live surface (.blackboard-static), so it keeps one engine', () => {
     // A Canvas file node can also be rendered by Obsidian's registered embedded
     // BlackboardView, which paints a `.blackboard-static` canvas into the same content
     // host. Mounting a second embed engine would duplicate the in-progress stroke.

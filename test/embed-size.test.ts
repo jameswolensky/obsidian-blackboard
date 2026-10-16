@@ -28,7 +28,7 @@ describe('parseEmbedSize', () => {
   it('parses percent width', () => {
     expect(parseEmbedSize('100%')).toEqual({ width: '100%', height: null });
   });
-  it('parses percentxheight', () => {
+  it('parses a percent width with a pixel height', () => {
     expect(parseEmbedSize('100%x400')).toEqual({ width: '100%', height: '400px' });
   });
   it('returns null for empty/garbage', () => {

@@ -1,10 +1,10 @@
 /**
  * Inline SVG icons for the global toolbar.
  *
- * We deliberately do NOT use Obsidian's `setIcon`/lucide here: lucide icon names
+ * This deliberately does not use Obsidian's `setIcon`/lucide: lucide icon names
  * vary between Obsidian desktop and mobile (iPad) builds, and a missing name
- * renders nothing — which showed up on iPad as "no icons at all". Bundling our
- * own high-contrast SVGs guarantees identical rendering on every platform.
+ * renders nothing, which showed up on iPad as no icons at all. Bundling these
+ * high-contrast SVGs gives identical rendering on every platform.
  *
  * Each icon is a 24x24, stroke-based glyph using `currentColor`, so button color
  * (and the .active accent) controls appearance.
@@ -41,7 +41,7 @@ export const ICONS: Record<IconName, string> = {
   redo: svg('<path d="M15 14l5-5-5-5"/><path d="M20 9H9a5 5 0 0 0 0 10h6"/>'),
   collapse: svg('<path d="M7 4l5 5 5-5"/><path d="M7 20l5-5 5 5"/>'),
   plus: svg('<line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>'),
-  // Framed drawing with a "+" — insert an existing drawing into the page.
+  // Framed drawing with a "+": insert an existing drawing into the page.
   'insert-existing': svg(
     '<rect x="3" y="4" width="12" height="12" rx="2"/>' +
       '<circle cx="7" cy="8" r="1.2" fill="currentColor" stroke="none"/>' +
@@ -51,18 +51,18 @@ export const ICONS: Record<IconName, string> = {
 };
 
 /**
- * Parse icon markup into a real SVG element WITHOUT innerHTML (review guideline) and
- * WITHOUT strict `image/svg+xml` parsing: text/html parsing is deliberately
- * namespace-forgiving — the HTML parser places <svg> subtrees in the SVG namespace
- * automatically. Strict image/svg+xml parsing rendered BLANK icons on iPad WKWebView
- * (the 1.0.5 regression) — do not "fix" this back to it. The markup is a compile-time
- * constant from ICONS/`svg()` above, never user input.
+ * Parse icon markup into a real SVG element without innerHTML (Obsidian's plugin review
+ * guidelines) and without strict `image/svg+xml` parsing. text/html parsing is
+ * namespace-forgiving: the HTML parser places <svg> subtrees in the SVG namespace
+ * automatically. Strict image/svg+xml parsing rendered blank icons on iPad WKWebView
+ * (1.0.1 to 1.0.4, fixed in 1.0.5), so do not switch back to it. The markup is a
+ * compile-time constant from ICONS/`svg()` above, never user input.
  */
 function svgFromString(markup: string, doc: Document): SVGSVGElement {
   const parsed = new DOMParser().parseFromString(markup, 'text/html');
   const svg = parsed.body.querySelector('svg');
   if (!svg) throw new Error('icon markup contained no <svg>');
-  // Import into the TARGET element's document (popout-safe), not the global one.
+  // Import into the target element's document (popout-safe), not the global one.
   return doc.importNode(svg, true);
 }
 
@@ -72,10 +72,9 @@ export function setToolbarIcon(el: HTMLElement, name: IconName): void {
 }
 
 /**
- * Map a brush size to the diameter (px) of its indicator dot. Strictly increasing so
- * every preset size renders a visibly distinct dot — the two smallest sizes (2 and 4)
- * previously collapsed to the same dot because the old clamp floored the diameter at 4.
- * Capped at 22 to stay within the 24x24 viewBox / button bounds.
+ * Map a brush size to the diameter (px) of its indicator dot: size + 2, so the five
+ * pen presets (2, 4, 8, 16, 30) each get a distinct dot. Capped at 22 to stay within
+ * the 24x24 viewBox / button bounds.
  */
 export function sizeToDotDiameter(size: number): number {
   return Math.min(22, size + 2);
@@ -83,8 +82,8 @@ export function sizeToDotDiameter(size: number): number {
 
 /**
  * Render the brush-size button glyph: a single white-filled circle whose diameter
- * scales with the brush size (see `sizeToDotDiameter`), mirroring the increasingly-
- * larger white dots in the size popover. Kept within the 24x24 viewBox.
+ * scales with the brush size (see `sizeToDotDiameter`), matching the growing white
+ * dots in the size popover. Kept within the 24x24 viewBox.
  */
 export function setSizeDotIcon(el: HTMLElement, size: number): void {
   const d = sizeToDotDiameter(size);

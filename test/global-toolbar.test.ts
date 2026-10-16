@@ -7,8 +7,8 @@ import { ToolManager } from '../src/domain/tool-manager';
 import { DEFAULT_TOOL_STATE, DEFAULT_PLUGIN_SETTINGS } from '../src/domain/entities';
 import type { PluginSettings } from '../src/domain/entities';
 
-/** A surface backed by a shared ToolManager — mirrors `engineSurface` so the toolbar
- * drives the one global tool state (fix-tool-state-isolation). */
+/** A surface backed by a shared ToolManager. Mirrors `engineSurface`, so the toolbar
+ * drives the one global tool state. */
 function sharedSurface(tm: ToolManager): DrawingSurface {
   return {
     setTool: (t) => tm.setTool(t),
@@ -48,7 +48,7 @@ function pointerup(el: Element | null) {
   el?.dispatchEvent(new PointerEvent('pointerup', { bubbles: true }));
 }
 
-describe('GlobalToolbar — per-tool colour memory (QA2: highlighter must stay yellow)', () => {
+describe('GlobalToolbar per-tool colour memory (the highlighter stays yellow)', () => {
   let tb: GlobalToolbar | undefined;
   afterEach(() => { tb?.destroy(); tb = undefined; });
 
@@ -87,7 +87,7 @@ describe('GlobalToolbar — per-tool colour memory (QA2: highlighter must stay y
   });
 });
 
-describe('Brush size dots — QA2: five sizes must be visually distinct', () => {
+describe('Brush size dots: the five sizes are visually distinct', () => {
   function radiusOf(size: number): number {
     const el = document.createElement('div');
     setSizeDotIcon(el, size);
@@ -108,7 +108,7 @@ describe('Brush size dots — QA2: five sizes must be visually distinct', () => 
   });
 });
 
-describe('GlobalToolbar — QA3: undo/redo light up when a stroke ends', () => {
+describe('GlobalToolbar undo/redo light up when a stroke ends', () => {
   let tb: GlobalToolbar | undefined;
   afterEach(() => { tb?.destroy(); tb = undefined; });
 
@@ -132,7 +132,7 @@ describe('GlobalToolbar — QA3: undo/redo light up when a stroke ends', () => {
 
   it('re-enables the undo button when a stroke ends (was stuck disabled after the first stroke)', () => {
     // Repro: drawing the first stroke made the surface undoable, but the toolbar only
-    // re-syncs undo/redo on tool/size/surface changes — never on stroke end — so the
+    // re-synced undo/redo on tool, size or surface changes, never on stroke end, so the
     // undo arrow stayed greyed out until the user happened to tap it.
     const host = document.createElement('div');
     document.body.appendChild(host);
@@ -154,7 +154,7 @@ describe('GlobalToolbar — QA3: undo/redo light up when a stroke ends', () => {
   });
 });
 
-describe('GlobalToolbar — QA2: re-centers on viewport changes (mini-keyboard / orientation)', () => {
+describe('GlobalToolbar listens for viewport changes (mini-keyboard, orientation) to re-center', () => {
   let tb: GlobalToolbar | undefined;
   let origVV: unknown;
   beforeEach(() => { origVV = (window as any).visualViewport; });
@@ -197,7 +197,7 @@ describe('GlobalToolbar — QA2: re-centers on viewport changes (mini-keyboard /
   });
 });
 
-describe('GlobalToolbar — QA2: popovers auto-close', () => {
+describe('GlobalToolbar popovers auto-close', () => {
   let tb: GlobalToolbar | undefined;
   afterEach(() => { tb?.destroy(); tb = undefined; });
 
@@ -239,34 +239,34 @@ describe('GlobalToolbar — QA2: popovers auto-close', () => {
   });
 });
 
-describe('GlobalToolbar — tool selection cannot enter a stuck state (shared tool state)', () => {
+describe('GlobalToolbar tool selection cannot get stuck (shared tool state)', () => {
   let tb: GlobalToolbar | undefined;
   afterEach(() => { tb?.destroy(); tb = undefined; });
 
-  it('re-selecting the pen takes effect after cross-surface switching, and stays consistent everywhere', () => {
+  it('re-selecting the pen takes effect after repeated switching, and is the same on both surfaces', () => {
     const host = document.createElement('div');
     document.body.appendChild(host);
     const mgr = new SurfaceManager();
     tb = new GlobalToolbar(host, mgr);
 
-    // Two surfaces sharing ONE ToolManager (the B4 setup).
+    // Two surfaces sharing ONE ToolManager.
     const shared = new ToolManager({ ...DEFAULT_TOOL_STATE });
     const surfaceA = sharedSurface(shared);
     const surfaceB = sharedSurface(shared);
     mgr.register(surfaceA, document.createElement('div'));
     mgr.register(surfaceB, document.createElement('div'));
 
-    // The toolbar tracks surface A while the user actually drew last on B — the stale-
-    // surface condition that caused the stuck toolbar.
+    // The toolbar tracks surface A while the user drew last on B (the stale-surface case
+    // that caused the stuck toolbar).
     mgr.setActive(surfaceA);
 
-    // Switch tools several times across surfaces, leaving the highlighter active.
+    // Switch tools several times, leaving the highlighter active.
     pointerup(host.querySelector('[data-tool="highlighter"]'));
     pointerup(host.querySelector('[data-tool="eraser"]'));
     pointerup(host.querySelector('[data-tool="highlighter"]'));
     expect(shared.activeTool).toBe('highlighter');
 
-    // Re-select the pen — must take effect (no stuck state).
+    // Re-select the pen. It must take effect (no stuck state).
     pointerup(host.querySelector('[data-tool="pen"]'));
 
     expect(shared.activeTool).toBe('pen');
@@ -299,7 +299,7 @@ describe('GlobalToolbar — tool selection cannot enter a stuck state (shared to
   });
 });
 
-describe('GlobalToolbar — customizable palette and spectrum-only well', () => {
+describe('GlobalToolbar customizable palette and spectrum-only well', () => {
   let tb: GlobalToolbar | undefined;
   afterEach(() => { tb?.destroy(); tb = undefined; });
 
@@ -400,7 +400,7 @@ describe('GlobalToolbar — customizable palette and spectrum-only well', () => 
     const { host, surface } = setup(settingsWith(palette));
     const popover = host.querySelector('.blackboard-gt-color-popover') as HTMLElement;
 
-    // Open the popover via the colour well (a swatch pick now closes it, so don't pick one).
+    // Open the popover via the colour well (picking a swatch would close it, so don't pick one).
     pointerup(host.querySelector('.blackboard-gt-colorwell'));
     expect(popover.style.display).not.toBe('none');
     const penColor = surface.activeColor;
@@ -428,8 +428,8 @@ describe('GlobalToolbar — customizable palette and spectrum-only well', () => 
     pointerup(host.querySelector('[data-tool="eraser"]'));
 
     expect(surface.setTool).toHaveBeenCalledWith('eraser');
-    // The colorless eraser stores nothing: setColor here is a harmless no-op re-apply
-    // that never precedes the tool switch (no pre-switch save path runs).
+    // The pre-switch save path does not run: any setColor call comes after the tool
+    // switch (and is a no-op for the colorless eraser).
     const setColorOrders = surface.setColor.mock.invocationCallOrder;
     const setToolOrder = surface.setTool.mock.invocationCallOrder.at(-1)!;
     for (const o of setColorOrders) expect(o).toBeGreaterThan(setToolOrder);
@@ -443,7 +443,7 @@ function stubRect(el: HTMLElement, r: { top: number; bottom: number; left: numbe
   }) as DOMRect;
 }
 
-describe('GlobalToolbar — new-drawing (+) button', () => {
+describe('GlobalToolbar new-drawing (+) button', () => {
   let tb: GlobalToolbar | undefined;
   afterEach(() => { tb?.destroy(); tb = undefined; });
 
@@ -469,7 +469,7 @@ describe('GlobalToolbar — new-drawing (+) button', () => {
   });
 });
 
-describe('GlobalToolbar — insert-existing button', () => {
+describe('GlobalToolbar insert-existing button', () => {
   let tb: GlobalToolbar | undefined;
   afterEach(() => { tb?.destroy(); tb = undefined; });
 
@@ -495,7 +495,7 @@ describe('GlobalToolbar — insert-existing button', () => {
   });
 });
 
-describe('GlobalToolbar — persistent pill on host with no surface', () => {
+describe('GlobalToolbar persistent pill on a host with no surface', () => {
   let tb: GlobalToolbar | undefined;
   afterEach(() => { tb?.destroy(); tb = undefined; });
 
@@ -567,12 +567,12 @@ describe('GlobalToolbar — persistent pill on host with no surface', () => {
     const root = host.querySelector('.blackboard-global-toolbar') as HTMLElement;
     const pill = host.querySelector('.blackboard-global-toolbar-pill') as HTMLElement;
 
-    // Empty page → forced collapsed pill.
+    // Empty page: forced collapsed pill.
     tb!.setHost(document.createElement('div'));
     expect(pill.style.display).toBe('');
     expect(root.style.display).toBe('none');
 
-    // A real drawing activates → full toolbar, not the pill.
+    // A real drawing activates: full toolbar, not the pill.
     const surface = mockSurface();
     mgr.register(surface, document.createElement('div'));
     mgr.setActive(surface);
@@ -586,7 +586,7 @@ describe('GlobalToolbar — persistent pill on host with no surface', () => {
     const root = host.querySelector('.blackboard-global-toolbar') as HTMLElement;
     const pill = host.querySelector('.blackboard-global-toolbar-pill') as HTMLElement;
 
-    // A real drawing is active → full toolbar shown.
+    // A real drawing is active: full toolbar shown.
     const a = mockSurface();
     mgr.register(a, document.createElement('div'));
     mgr.setActive(a);
@@ -597,7 +597,7 @@ describe('GlobalToolbar — persistent pill on host with no surface', () => {
     expect(root.style.display).toBe('none');
     expect(pill.style.display).toBe('');
 
-    // Switching to a different drawing keeps the user's collapse — not auto-expanded.
+    // Switching to a different drawing keeps the user's collapse (no auto-expand).
     const b = mockSurface();
     mgr.register(b, document.createElement('div'));
     mgr.setActive(b);
@@ -606,7 +606,7 @@ describe('GlobalToolbar — persistent pill on host with no surface', () => {
   });
 });
 
-describe('GlobalToolbar — showToolbarPill setting gates the persistent no-surface pill', () => {
+describe('GlobalToolbar showToolbarPill setting gates the persistent no-surface pill', () => {
   let tb: GlobalToolbar | undefined;
   afterEach(() => { tb?.destroy(); tb = undefined; });
 
@@ -700,7 +700,7 @@ describe('GlobalToolbar — showToolbarPill setting gates the persistent no-surf
   });
 });
 
-describe('GlobalToolbar — stays clear of the native Canvas card menu', () => {
+describe('GlobalToolbar stays clear of the native Canvas card menu', () => {
   let tb: GlobalToolbar | undefined;
   afterEach(() => { tb?.destroy(); tb = undefined; });
 
@@ -732,7 +732,7 @@ describe('GlobalToolbar — stays clear of the native Canvas card menu', () => {
   });
 });
 
-describe('GlobalToolbar — visual feedback', () => {
+describe('GlobalToolbar visual feedback', () => {
   let tb: GlobalToolbar | undefined;
   afterEach(() => { tb?.destroy(); tb = undefined; });
 
@@ -791,7 +791,7 @@ describe('GlobalToolbar — visual feedback', () => {
   });
 
   it('resizes the size-button circle to the newly-active tool size when switching tools', () => {
-    // pen size 2, eraser size 30 — switching pen -> eraser must grow the glyph.
+    // Pen size 2, eraser size 30: switching pen -> eraser must grow the glyph.
     const tm = new ToolManager({ ...DEFAULT_TOOL_STATE, penSize: 2, eraserSize: 30 });
     const { host } = setup(tm);
     const sizeBtn = host.querySelector('.blackboard-gt-size-btn') as HTMLElement;
@@ -835,7 +835,7 @@ describe('GlobalToolbar — visual feedback', () => {
   });
 });
 
-describe('GlobalToolbar — QA4: highlighter has its own wider size scale', () => {
+describe('GlobalToolbar highlighter has its own wider size scale', () => {
   let tb: GlobalToolbar | undefined;
   afterEach(() => { tb?.destroy(); tb = undefined; });
 
@@ -931,9 +931,9 @@ describe('GlobalToolbar — QA4: highlighter has its own wider size scale', () =
   });
 });
 
-describe('colour change repaints the tool glyph immediately (1.0.4 regression, re-fixed)', () => {
-  // Repro from device audit: picking a colour recolours strokes but the toolbar glyph
-  // keeps the old tint until an unrelated event (tool switch) re-runs sync().
+describe('colour change repaints the tool glyph immediately', () => {
+  // Repro: picking a colour recoloured strokes, but the toolbar glyph kept the old
+  // tint until an unrelated event (a tool switch) re-ran sync().
   let tb: GlobalToolbar;
   afterEach(() => tb?.destroy());
   function setup() {
@@ -953,7 +953,7 @@ describe('colour change repaints the tool glyph immediately (1.0.4 regression, r
     return p.style.color;
   };
 
-  it('pen glyph re-tints the moment a swatch colour is picked', () => {
+  it('pen glyph re-tints the moment a colour is picked', () => {
     const { host } = setup();
     const pen = host.querySelector('[data-tool="pen"]') as HTMLElement;
 

@@ -149,7 +149,7 @@ describe('performance: multiple DrawingEngine instances', () => {
     document.body.removeChild(container);
   });
 
-  it('concurrent render of 50 engines completes under 1000ms', () => {
+  it('renders 50 engines back to back under 1000ms', () => {
     const engines: DrawingEngine[] = [];
     const strokes = generateStrokes(20);
 
@@ -176,7 +176,7 @@ describe('performance: multiple DrawingEngine instances', () => {
     document.body.innerHTML = '';
   });
 
-  it('1000-word handwriting equivalent: 5000 strokes, 150k points — load + render', () => {
+  it('1000-word handwriting equivalent: 5000 strokes, 150k points, load and render under 3000ms', () => {
     const strokes = generateStrokes(5000);
     for (const s of strokes) {
       const pts: [number, number, number][] = [];

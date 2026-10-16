@@ -59,8 +59,8 @@ describe('DEFAULT_PLUGIN_SETTINGS', () => {
 describe('DEFAULT_TOOL_STATE', () => {
   it('seeds per-tool defaults: pen white/2, highlighter yellow/22, eraser 8 (each on a real preset)', () => {
     // The highlighter default lands on a mid HIGHLIGHTER_SIZES preset (a real marker is
-    // chunky, not 2px), and the eraser default lands on a PEN_SIZES preset — so the size
-    // popover can highlight the selected dot for every tool on first open (QA3).
+    // chunky, not 2px), and the eraser default lands on a PEN_SIZES preset, so the size
+    // popover highlights the selected dot for every tool on first open.
     expect(DEFAULT_TOOL_STATE).toEqual({
       activeTool: 'pen',
       penColor: '#ffffff',

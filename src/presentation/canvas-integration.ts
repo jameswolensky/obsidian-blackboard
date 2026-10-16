@@ -13,8 +13,8 @@ import type { CanvasViewLike as CanvasHostLike } from '../types/obsidian-interna
 
 /**
  * The insert-drawing commands target a Markdown/Canvas host that can receive an embed. When the
- * standalone Blackboard view is active there is no such host, so the commands fail gracefully
- * (no-op) instead of creating a stray file and navigating away.
+ * standalone Blackboard view is active there is no such host, so the commands show a notice and
+ * stop instead of creating a stray file and navigating away.
  */
 function isBlackboardViewActive(app: App): boolean {
   return app.workspace?.getActiveViewOfType(View)?.getViewType?.() === VIEW_TYPE;
@@ -24,8 +24,8 @@ function isBlackboardViewActive(app: App): boolean {
  * Embed a `.blackboard` drawing into the active host, host-aware:
  * - Markdown view: insert a `![[name]]` embed at the cursor.
  * - Canvas: append to a selected text node, else create a file node at viewport center.
- * - Neither (e.g. a `.blackboard` file is the active view): open the drawing in a leaf so the
- *   user always sees a result.
+ * - Neither (no Markdown view is active and the most recent leaf is not a Canvas): open the
+ *   drawing in a leaf so the user always sees a result.
  *
  * `name` is the wikilink target used by the Markdown/Canvas-text paths; `file` is the resolved
  * `TFile` needed by the Canvas-node and open-in-leaf paths (may be null when only a Markdown
@@ -75,8 +75,8 @@ export async function embedDrawingIntoHost(
     return;
   }
 
-  // No Markdown or Canvas host (e.g. a .blackboard file is the active view): open the drawing
-  // so the user always sees a result instead of a silent, invisible operation.
+  // No Markdown or Canvas host: open the drawing so the user always sees a result instead of
+  // a silent, invisible operation.
   if (file instanceof TFile) await app.workspace.getLeaf(false).openFile(file);
 }
 
@@ -165,10 +165,10 @@ function patchCanvasFileNodes(repo: IDrawingRepository, app: App, settings: Plug
     const hasPreview = contentEl.querySelector('.blackboard-preview-img') || contentEl.querySelector('.blackboard-placeholder');
     if (hasPreview) continue;
 
-    // B5: a Canvas file node can ALSO be rendered by Obsidian's registered embedded
+    // A Canvas file node can also be rendered by Obsidian's registered embedded
     // BlackboardView in the same content host. A live drawing surface (either an embed
-    // engine or the embedded view) shows a `.blackboard-static` canvas; if one is already
-    // present, skip — mounting a second engine would paint the in-progress stroke twice.
+    // engine or the embedded view) shows a `.blackboard-static` canvas. If one is already
+    // present, skip: mounting a second engine would paint the in-progress stroke twice.
     if (contentEl.querySelector('.blackboard-static')) continue;
 
     if (mountQueue.has(contentEl)) continue;
@@ -189,9 +189,9 @@ export function patchCanvas(app: App, plugin: Plugin, settings: PluginSettings, 
     if (!leaf) return;
     const view = leaf.view as CanvasHostLike;
     if (!view?.canvas?.cardMenuEl) return;
-    // The card-menu pencil button was removed by design: the floating toolbar's
-    // new/insert buttons are the ONLY on-screen entry points. Older versions added
-    // #blackboard-add-drawing here — remove any survivor so reloads heal the menu.
+    // The card-menu pencil button was removed: the floating toolbar's new/insert
+    // buttons are the only on-screen entry points. Older versions added
+    // #blackboard-add-drawing here, so remove any survivor and reloads heal the menu.
     view.canvas.cardMenuEl.querySelector('#blackboard-add-drawing')?.remove();
 
     patchCanvasFileNodes(repo, app, settings, surfaceManager, toolManager, store);

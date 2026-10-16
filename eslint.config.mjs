@@ -1,10 +1,10 @@
 import tseslint from 'typescript-eslint';
 import obsidianmd from 'eslint-plugin-obsidianmd';
 
-// Mirrors the rules Obsidian's community-plugin review runs on source code, so violations
-// are caught in CI before a release is submitted rather than in review. Note: this covers
-// the eslint-checkable rules only — Obsidian's separate CSS, activeDocument, attestation,
-// and behavior analyzers are not reproduced here.
+// Mirrors the rules Obsidian's community-plugin review runs on source code, so CI catches
+// violations before a release is submitted instead of in review. This covers only the
+// eslint-checkable rules. Obsidian's separate CSS, activeDocument, attestation and behavior
+// analyzers are not reproduced here.
 export default tseslint.config(
   {
     ignores: [

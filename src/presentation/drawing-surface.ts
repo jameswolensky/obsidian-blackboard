@@ -4,7 +4,7 @@ export type ToolName = 'pen' | 'highlighter' | 'eraser';
 
 /**
  * The contract the global floating toolbar drives. Implemented by each drawing
- * surface (the standalone BlackboardView and every canvas embed) over its engine,
+ * surface (the standalone BlackboardView and every Markdown or Canvas embed) over its engine,
  * so one shared toolbar can control whichever drawing is currently active.
  */
 export interface DrawingSurface {
@@ -16,9 +16,9 @@ export interface DrawingSurface {
   readonly activeTool: ToolName;
   readonly activeColor: string;
   readonly activeSize: number;
-  /** Pen color regardless of the active tool — lets the toolbar tint the pen glyph. */
+  /** Pen color regardless of the active tool, so the toolbar can tint the pen glyph. */
   readonly penColor: string;
-  /** Highlighter color regardless of the active tool — lets the toolbar tint the highlighter glyph. */
+  /** Highlighter color regardless of the active tool, so the toolbar can tint its glyph. */
   readonly highlighterColor: string;
   canUndo(): boolean;
   canRedo(): boolean;

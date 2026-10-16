@@ -47,7 +47,7 @@ describe('DocumentStore', () => {
     expect(h1).not.toBe(h2); // distinct handles (distinct subscriber identities)
   });
 
-  it('commit notifies sibling subscribers but NOT the committing handle (B2)', async () => {
+  it('commit notifies sibling subscribers but NOT the committing handle', async () => {
     const repo = mockRepo(file([stroke('a')]));
     const h1 = await store.acquire('Draw.blackboard', repo);
     const h2 = await store.acquire('Draw.blackboard', repo);
@@ -83,7 +83,7 @@ describe('DocumentStore', () => {
     h.commit(file([stroke('a'), stroke('b')]));
     expect(repo.save).not.toHaveBeenCalled(); // still within the debounce window
 
-    slow.flushAll(); // app backgrounding — force the write now
+    slow.flushAll(); // app going to the background: force the write now
 
     expect(repo.save).toHaveBeenCalledTimes(1);
     expect((repo.save.mock.calls[0][1] as BlackboardFile).strokes.map((s) => s.id)).toEqual(['a', 'b']);
@@ -112,7 +112,7 @@ describe('DocumentStore', () => {
     expect(h1.getStrokes().map((s) => s.id)).toEqual(['x', 'y']);
   });
 
-  it('reconcile ignores our own last-written content (no save->modify->reload loop)', async () => {
+  it('reconcile ignores the store\'s own last-written content (no save->modify->reload loop)', async () => {
     const repo = mockRepo(file([stroke('a')]));
     const h = await store.acquire('Draw.blackboard', repo);
     const onChange = vi.fn();
@@ -122,7 +122,7 @@ describe('DocumentStore', () => {
     h.commit(committed);
     onChange.mockClear(); // committer wasn't notified anyway
 
-    store.reconcile('Draw.blackboard', serialize(committed)); // our own write echoing back
+    store.reconcile('Draw.blackboard', serialize(committed)); // the store's own write echoing back
 
     expect(onChange).not.toHaveBeenCalled();
   });

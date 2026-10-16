@@ -72,7 +72,7 @@ if (typeof globalThis.URL.revokeObjectURL !== 'function') {
 }
 
 // Obsidian runtime globals (obsidian.d.ts declares them; the app provides them).
-// activeDocument/activeWindow alias the focused window — in jsdom that's the one window.
+// activeDocument/activeWindow alias the focused window (in jsdom there is only one window).
 (globalThis as any).activeDocument = document;
 (globalThis as any).activeWindow = window;
 if (typeof (globalThis as any).createEl !== 'function') {

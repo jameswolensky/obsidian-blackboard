@@ -25,13 +25,13 @@ function dbgTarget(t: EventTarget | null): string {
 
 export const VIEW_TYPE = 'blackboard-view';
 
-/** Screen-px margin kept around the drawing when the standalone view fits it on open/resize. */
+/** Screen-px margin kept around the drawing when the standalone view fits it to the pane. */
 const STANDALONE_FIT_MARGIN = 16;
 export { FILE_EXTENSION };
 
 // Tracked document/observer teardown callbacks. Handlers are registered with concrete event
-// types (PointerEvent, KeyboardEvent, …) and observer entries are invoked with null; method
-// syntax keeps the parameter bivariant so both stay assignable.
+// types (PointerEvent, KeyboardEvent) and observer entries are called with null. Method syntax
+// keeps the parameter bivariant so both stay assignable.
 type DocListenerFn = { fn(e: Event | null): void }['fn'];
 
 export class BlackboardView extends TextFileView {
@@ -60,9 +60,9 @@ export class BlackboardView extends TextFileView {
   private docListeners: Array<{ type: string; fn: DocListenerFn; capture: boolean }> = [];
   private strokeActive: boolean = false;
   // Standalone view only: the surface fills the pane and is an infinite pan + zoom canvas
-  // over the engine's view transform. On open (and on resize) the drawing is fitted into
-  // the pane; once the user has drawn/panned/zoomed (`userInteracted`) the view is left
-  // where they put it and a resize only resizes the backing store.
+  // over the engine's view transform. On open and on resize the drawing is fitted into the
+  // pane. Once the user has drawn, panned or zoomed (`userInteracted`), the view stays where
+  // they put it and a resize only resizes the backing store.
   private userInteracted: boolean = false;
   private resizeObserver: ResizeObserver | null = null;
   // Active finger (touch) pointers for standalone pan/pinch navigation, keyed by pointerId.
@@ -119,15 +119,15 @@ export class BlackboardView extends TextFileView {
       this.hideCanvasBlocker();
     }
 
-    // The embedded (canvas-node) view fills its host with an absolute, overflow-hidden
-    // surface. The standalone view instead fills the pane and scrolls when the drawing
-    // is larger than the pane, so it must NOT use the embedded (absolute/clip) class.
+    // The embedded (Canvas node) view fills its host with an absolute, overflow-hidden
+    // surface. The standalone view sizes its surface to the pane itself and pans and zooms
+    // instead, so it must NOT use the embedded (absolute, clipped) class.
     const containerCls = this.isEmbedded
       ? 'blackboard-drawing-container blackboard-embedded-drawing'
       : 'blackboard-drawing-container blackboard-standalone-drawing';
     this.drawingContainer = container.createDiv({ cls: containerCls });
     this.drawingContainer.style.touchAction = this.isEmbedded ? 'pan-x pan-y' : 'none';
-    // Board background (issue #13): paint the surface (whiteboard/blackboard/etc.).
+    // Board background (issue #13): paint the surface in the chosen board colour.
     this.drawingContainer.style.backgroundColor = this.settings.boardBackground;
 
     this.drawingContainer.addEventListener('pointerdown', (e) => {
@@ -136,20 +136,17 @@ export class BlackboardView extends TextFileView {
       }
     });
 
-    // iPadOS Scribble swallows Apple Pencil pointer events that "look like" handwriting,
-    // dropping whole strokes. A non-passive touchstart/touchmove preventDefault on the
-    // drawing surface is the known fix (Pencil draws via pointer events, which still fire).
+    // iPadOS Scribble swallows Apple Pencil pointer events that look like handwriting and
+    // drops whole strokes. A non-passive touchstart/touchmove preventDefault on the drawing
+    // surface stops it (the Pencil draws through pointer events, which still fire).
     const blockScribble = (e: TouchEvent) => { e.preventDefault(); };
     this.drawingContainer.addEventListener('touchstart', blockScribble, { passive: false });
     this.drawingContainer.addEventListener('touchmove', blockScribble, { passive: false });
 
-    // Standalone full-page view: the drawing container is centred, leaving margins of bare
-    // contentEl around it. A stylus over those margins still lands on an editable region,
-    // so Scribble can fire there. Extend the same non-passive guard to contentEl so a
-    // Pencil anywhere over the pane is suppressed; a standalone Blackboard must never
-    // trigger Scribble. Tracked for removal on close so the listener never leaks across the
-    // view's reusable contentEl. (Embedded mode keeps the note scrollable, so it is not
-    // extended here.) Real-device confirmation only; see tasks.md §4.
+    // Standalone full-page view: extend the same guard to contentEl, so a Pencil anywhere in
+    // the pane is covered and not only over the drawing container. The listeners are removed
+    // on close because Obsidian reuses the view's contentEl. (The embedded view skips this so
+    // its host stays scrollable.) This can only be checked on a real iPad.
     if (!this.isEmbedded) {
       const contentEl = container;
       contentEl.addEventListener('touchstart', blockScribble, { passive: false });
@@ -164,7 +161,7 @@ export class BlackboardView extends TextFileView {
       });
     }
 
-    // Parse file dimensions first
+    // Read the saved size and strokes before building the engine.
     let fileWidth = 800;
     let fileHeight = 600;
     let fileStrokes: Stroke[] = [];
@@ -179,9 +176,9 @@ export class BlackboardView extends TextFileView {
       }
     }
 
-    // Share the plugin's single ToolManager so tool/colour/size are global across every
-    // surface; the manager is seeded once at startup and is NOT re-seeded on mount, so
-    // opening a file never clobbers the user's live selection (fix-tool-state-isolation).
+    // Share the plugin's single ToolManager so the tool, colour and size are the same on every
+    // surface. The manager is seeded once at startup and NOT on mount, so opening a file never
+    // resets the tool the user picked.
     this.engine = new DrawingEngine(this.drawingContainer, fileWidth, fileHeight, this.toolManager);
 
     if (fileStrokes.length > 0) {
@@ -194,11 +191,10 @@ export class BlackboardView extends TextFileView {
       this.drawingContainer.style.width = fileWidth + 'px';
       this.drawingContainer.style.height = fileHeight + 'px';
     } else {
-      // Standalone: an infinite pan + zoom canvas. The surface fills the pane and
-      // navigation is via the view transform (pan/zoom), NOT document scroll.
+      // Standalone: an infinite pan + zoom canvas. The surface fills the pane and navigation
+      // is the view transform, NOT document scroll, so the pane itself never scrolls (a
+      // scrolled pane shifts the surface under the pointer).
       container.setCssStyles({ position: 'relative' });
-      // The surface fills the pane and navigation is the view transform, so the pane itself
-      // never scrolls (a scrolled pane shifts the surface under the pointer).
       container.addClass('blackboard-standalone-host');
       this.layoutStandalone();
       this.resizeObserver = new ResizeObserver(() => this.layoutStandalone());
@@ -214,17 +210,17 @@ export class BlackboardView extends TextFileView {
 
     this.setupDocumentListeners();
 
-    // Join the shared document so sibling edits (embeds, Canvas nodes) reach this view and
-    // this view's edits reach them. Fire-and-forget: the engine already renders from the
-    // file data; once acquired we reseed from the canonical strokes.
+    // Join the shared document so edits in embeds and Canvas nodes reach this view and this
+    // view's edits reach them. Not awaited: the engine already renders from the file data and
+    // reloads the canonical strokes once the handle arrives.
     void this.attachToStore();
   }
 
   /**
-   * Register this view's surface with the path's shared document. Single-writer design:
-   * after acquiring, the store owns persistence (`persist()` commits, never `requestSave`),
-   * and a sibling commit reloads canonical strokes here WITHOUT re-centring (the user's
-   * scroll position / `userInteracted` state is preserved). Idempotent and torn-down safe.
+   * Attach this view to the path's shared document. After that the store is the only writer
+   * (`persist()` commits, never `requestSave`), and a commit from another view reloads the
+   * canonical strokes here WITHOUT re-fitting (the user's pan and zoom stay put). Safe to call
+   * more than once and safe if the view closes while it waits.
    */
   private async attachToStore(): Promise<void> {
     if (!this.store || !this.repo || !this.file || this.handle || this.attaching || !this.engine) return;
@@ -238,7 +234,7 @@ export class BlackboardView extends TextFileView {
       this.engine.render();
       handle.subscribe(() => {
         if (!this.engine || !this.handle) return;
-        // Reload canonical strokes and repaint only — never re-centre, never re-persist.
+        // Reload the canonical strokes and repaint. Never re-fit and never save from here.
         this.engine.loadStrokes(this.handle.getStrokes());
         this.engine.staticDirty = true;
         this.engine.requestRender();
@@ -248,8 +244,8 @@ export class BlackboardView extends TextFileView {
     }
   }
 
-  /** Build the canonical file from the live engine; shared by getViewData and commit so the
-   * store's serialized content matches what Obsidian would write (loop guard stays valid). */
+  /** Build the canonical file from the live engine. getViewData and commit both use it, so the
+   * store's serialized content matches what Obsidian would write (the loop guard stays valid). */
   private buildFile(): BlackboardFile {
     const cb = this.engine!.getContentBounds();
     const hasContent = cb.width > 0 && cb.height > 0;
@@ -263,16 +259,16 @@ export class BlackboardView extends TextFileView {
     };
   }
 
-  /** Persist a mutation. With the store active it is the single writer (commit -> debounced
-   * save + sibling refresh); otherwise fall back to Obsidian's debounced requestSave. */
+  /** Save a change. With the store attached it is the only writer (commit, then a debounced
+   * save and a refresh of the other views); otherwise use Obsidian's debounced requestSave. */
   private persist(): void {
     // Never write from an engine that does not hold this file's strokes. Obsidian can call
-    // clear() during teardown/reuse/mobile-suspend, which empties the engine and sets
-    // contentLoaded=false while the store handle stays attached. A persist() after that —
-    // a stray pointerup/pointercancel following an iPad suspend, or an erase — would commit
-    // an EMPTY buildFile() over a real drawing, and the store then both saves it to disk and
-    // pushes the blank to every sibling view. getViewData() has this guard; the store path
-    // bypasses getViewData entirely, so it needs its own. (2026-08-21 iPad wipe.)
+    // clear() during teardown, view reuse or a mobile suspend, which empties the engine and
+    // sets contentLoaded=false while the store handle stays attached. A persist() after that
+    // (a stray pointerup/pointercancel after an iPad suspend, or an erase) would commit an
+    // EMPTY buildFile() over a real drawing, and the store would save it to disk and push the
+    // blank to every other view. getViewData() has this guard; the store path skips
+    // getViewData entirely, so it needs its own. (This wiped a drawing on iPad on 2026-08-21.)
     if (!this.contentLoaded) return;
     if (this.handle) this.handle.commit(this.buildFile());
     else this.requestSave();
@@ -281,9 +277,9 @@ export class BlackboardView extends TextFileView {
   /**
    * Standalone view layout: the drawing surface FILLS the pane (no grow-to-content, no
    * document scroll). Navigation is over the engine's view transform (infinite pan + zoom).
-   * While the user has not yet interacted, the loaded content is fitted into the pane
-   * (aspect-preserved, centred, shrunk if needed but never zoomed in) on open/resize. Once `userInteracted` is set, a resize only
-   * resizes the backing store and the current pan/zoom is preserved (no re-fit jump).
+   * Until the user interacts, each open or resize fits the content into the pane (aspect
+   * kept, centred, shrunk if needed but never zoomed in). Once `userInteracted` is set, a
+   * resize only resizes the backing store and the current pan and zoom stay put (no jump).
    */
   private layoutStandalone(): void {
     if (!this.engine || !this.drawingContainer || this.isEmbedded) return;
@@ -304,14 +300,14 @@ export class BlackboardView extends TextFileView {
   }
 
   getViewData(): string {
-    // width/height cache the content-bounds size (recomputable from strokes); embeds use
-    // them to render a drawing at its natural size. Built via buildFile() so the bytes match
-    // what the store commits, keeping the own-write guard valid when the store is active.
+    // width/height store the content-bounds size (recomputable from strokes); embeds and
+    // Canvas nodes fit against them. Built via buildFile() so the bytes match what the store
+    // commits, which keeps the own-write guard valid when the store is attached.
     //
     // Only rebuild from the engine when it actually holds the loaded drawing. After a
-    // teardown/suspend clear() the engine is empty but the file still has strokes; rebuilding
-    // then would return a blank drawing and let Obsidian overwrite the file (data loss). In
-    // that state we return the last loaded bytes unchanged.
+    // teardown or suspend clear() the engine is empty but the file still has strokes, and
+    // rebuilding would return a blank drawing that Obsidian then writes over the file (data
+    // loss). In that state the last loaded bytes are returned unchanged.
     if (this.engine && this.contentLoaded) this.fileData = serialize(this.buildFile());
     return this.fileData;
   }
@@ -319,9 +315,9 @@ export class BlackboardView extends TextFileView {
   setViewData(data: string, clear: boolean): void {
     this.fileData = data;
     // Once the store owns this drawing, Obsidian's reload after a save is the store's own write
-    // coming back (outside edits reach us through the store's reconcile instead). Reloading the
-    // engine here wiped the undo history after every stroke, and when the write was slow (iPad)
-    // it carried an older file and erased the stroke drawn meanwhile.
+    // coming back (outside edits arrive through the store's reconcile instead). Reloading the
+    // engine here would wipe the undo history after every stroke, and when the write is slow
+    // (iPad) it would load an older file and erase the stroke drawn in the meantime.
     if (this.handle && !clear) return;
     if (this.engine) {
       if (clear) this.engine.strokeManager.reset();
@@ -340,12 +336,13 @@ export class BlackboardView extends TextFileView {
           this.layoutStandalone();
         }
       } catch {
-        // Layout during teardown can race a detached container; the next resize re-lays out.
+        // Unparseable data, or a layout racing a detached container during teardown. The
+        // engine is left as it is, and the next resize lays it out again.
       }
       this.engine.staticDirty = true;
       this.engine.render();
     }
-    // The path becomes known once Obsidian loads the file; attach now if we haven't yet.
+    // The path becomes known once Obsidian loads the file; attach now if not attached yet.
     void this.attachToStore();
   }
 
@@ -358,14 +355,14 @@ export class BlackboardView extends TextFileView {
 
   async onClose(): Promise<void> {
     this.contentEl.classList.remove('blackboard-standalone-host');
-    // Flush any unsaved strokes before tearing down. When the store is active it is the
-    // single writer and flushes its own pending debounced save on release(), so only the
-    // legacy (no-store) path writes through Obsidian here (avoids a double-write).
+    // Flush any unsaved strokes before tearing down. With the store attached it is the only
+    // writer and flushes its own pending save on release(), so only the no-store path writes
+    // through Obsidian here (this avoids a double write).
     if (this.engine && this.file && !this.handle) {
       try {
         await this.app.vault.modify(this.file, this.getViewData());
       } catch {
-        // Save is retried on the next stroke end; failing here must not break the view.
+        // Best effort: a failed write must not stop the view from closing.
       }
     }
     if (this.handle) {
@@ -480,8 +477,8 @@ export class BlackboardView extends TextFileView {
       engine.addPoint([localX, localY, e.pressure || 0.5]);
     };
 
-    // A finger (touch) never draws: in the standalone view it navigates (pan/zoom), in the
-    // embed it is ignored. Pen always draws; mouse draws (and pans with space held).
+    // A finger (touch) never draws: in the standalone view it pans and zooms, in the embed it
+    // is ignored. Pen and mouse draw (in the standalone view, a mouse with space held pans).
     const isDrawingInput = (e: PointerEvent): boolean => {
       if (e.pointerType === 'touch') return false;
       if (!this.isEmbedded) return true;
@@ -496,8 +493,8 @@ export class BlackboardView extends TextFileView {
       }
       if (!inside) return;
 
-      // Standalone finger navigation: a touch pans/pinch-zooms the view, it never draws.
-      // While a pen stroke is active, ignore fingers so a resting palm cannot pan.
+      // Standalone finger navigation: a touch pans or pinch-zooms the view and never draws.
+      // While a pen stroke is active, fingers are ignored so a resting palm cannot pan.
       if (!this.isEmbedded && e.pointerType === 'touch') {
         if (this.strokeActive) return; // palm rejection
         e.stopPropagation();
@@ -543,7 +540,8 @@ export class BlackboardView extends TextFileView {
     };
 
     const onDocPointerMove = (e: PointerEvent) => {
-      // Standalone finger navigation (pan / pinch-zoom) — decoupled from the DocumentStore.
+      // Standalone finger navigation (pan, pinch-zoom). It only moves the view and never
+      // touches the DocumentStore.
       if (!this.isEmbedded && this.navPointers.has(e.pointerId)) {
         e.stopPropagation();
         e.preventDefault();
@@ -614,8 +612,8 @@ export class BlackboardView extends TextFileView {
         engine.endStroke();
         this.persist();
       }
-      // Re-sync the toolbar (undo/redo enablement) the instant a stroke or erase commits,
-      // so the undo arrow lights up immediately rather than on the next tap (QA3).
+      // Update the toolbar's undo/redo as soon as a stroke or erase commits, so the undo
+      // arrow lights up right away rather than on the next tap.
       this.surfaceManager?.notifyStrokeEnd();
       if (__DEV_BUILD__ && inputDebugEnabled()) inputDebugLog(`UP committed total=${engine.strokeManager.strokes.length}`);
     };
@@ -633,8 +631,9 @@ export class BlackboardView extends TextFileView {
     this.docListeners.push({ type: 'pointerup', fn: onDocPointerUp, capture: true });
     this.docListeners.push({ type: 'pointercancel', fn: onDocPointerUp, capture: true });
 
-    // Standalone desktop navigation: Ctrl/Cmd+wheel zooms about the cursor; space+drag
-    // pans (handled in the pointer handlers above). These mutate only the view transform.
+    // Standalone desktop navigation: a plain wheel or trackpad scroll pans, Ctrl/Cmd+wheel
+    // zooms about the cursor, and space+drag pans (handled in the pointer handlers above).
+    // All of these change only the view transform.
     if (!this.isEmbedded) {
       const onWheel = (e: WheelEvent) => {
         if (!dc.contains(e.target as Node)) return;

@@ -22,7 +22,7 @@ declare const __DEV_BUILD__: boolean;
 /**
  * Whether a view type should host the collapsed no-surface toolbar pill. Only Canvas
  * qualifies: on Canvas, inserting a drawing node is a core action, so a persistent pill is a
- * useful affordance. Markdown is deliberately excluded — a plain note has nothing to draw on,
+ * useful affordance. Markdown is left out on purpose: a plain note has nothing to draw on,
  * and a note that already embeds a drawing shows the embed's own auto-activated toolbar
  * instead of a redundant pill (issue #9).
  */
@@ -37,13 +37,13 @@ export default class BlackboardPlugin extends Plugin {
   private exportSvgUseCase!: ExportSvgUseCase;
   surfaceManager: SurfaceManager = new SurfaceManager();
   // Single source of truth for `.blackboard` stroke data, keyed by path. Every surface of a
-  // file shares one canonical document so edits propagate across panes/embeds/canvas nodes
-  // (B2), with a debounced single writer and an own-write/external-edit reconcile guard.
+  // file shares one canonical document so edits propagate across panes/embeds/canvas nodes,
+  // with a debounced single writer and an own-write/external-edit reconcile guard.
   documentStore: DocumentStore = new DocumentStore();
   // Exactly one ToolManager is the global source of truth for the active tool and every
   // tool's colour/size, shared across the standalone view and every embed/canvas node.
-  // Seeded once from code defaults at startup; mounting a surface never re-seeds it
-  // (fix-tool-state-isolation).
+  // Seeded once from code defaults at startup. Mounting a surface never re-seeds it, so
+  // opening another drawing can't reset the tool or colour you picked.
   toolManager: ToolManager = new ToolManager({ ...DEFAULT_TOOL_STATE });
   private globalToolbar: GlobalToolbar | null = null;
 
@@ -117,7 +117,7 @@ export default class BlackboardPlugin extends Plugin {
         try {
           await insertDrawingAtCursor(this.app, this.settings, this.createDrawingUseCase, this.repo, this.surfaceManager, this.toolManager, this.documentStore);
         } catch {
-          // Insertion is best-effort: no Markdown/Canvas host is a normal no-op, not an error.
+          // Insertion is best-effort: a failure here must not surface as an error.
         }
       },
     });
@@ -129,7 +129,7 @@ export default class BlackboardPlugin extends Plugin {
         try {
           insertExistingDrawing(this.app, this.repo, this.settings, this.surfaceManager, this.toolManager, this.documentStore);
         } catch {
-          // Best-effort like insert-drawing: absence of a host must not surface an error.
+          // Best-effort like insert-drawing: a failure here must not surface as an error.
         }
       },
     });
@@ -145,7 +145,7 @@ export default class BlackboardPlugin extends Plugin {
             try {
               await insertDrawingAtCursor(this.app, this.settings, this.createDrawingUseCase, this.repo, this.surfaceManager, this.toolManager, this.documentStore);
             } catch {
-              // Best-effort: no host is a normal no-op.
+              // Best-effort like the insert-drawing command.
             }
           });
       });
@@ -187,17 +187,17 @@ export default class BlackboardPlugin extends Plugin {
       });
     };
 
-    // Startup heal: any bbMounted marker present NOW is stale (this instance has
-    // mounted nothing yet) — left by a previous instance whose unload predates the
-    // unmount fix. Clear marker + orphaned engine DOM so re-mount can happen.
+    // Startup heal: any bbMounted marker present now is stale (this instance has
+    // mounted nothing yet). It was left by an older version that didn't unmount on
+    // unload. Clear the marker and the orphaned engine DOM so the embed can re-mount.
     for (const el of Array.from(
       activeDocument.querySelectorAll<HTMLElement>('[data-bb-mounted="true"]'),
     )) {
       el.dataset.bbMounted = 'false';
       el.empty();
     }
-    // Same heal for the retired card-menu pencil button (removed by design 2026-07-09):
-    // older instances injected it into canvas menus that survive plugin reloads.
+    // Same heal for the removed card-menu pencil button: older versions injected it into
+    // canvas menus, and those menus survive plugin reloads.
     for (const el of Array.from(activeDocument.querySelectorAll('#blackboard-add-drawing'))) {
       el.remove();
     }
@@ -233,7 +233,7 @@ export default class BlackboardPlugin extends Plugin {
       if (!(file instanceof TFile) || file.extension !== FILE_EXTENSION) return;
       // External-edit channel: reconcile the on-disk content into the shared document so
       // open surfaces refresh (another device, Obsidian Sync, manual edit). The store
-      // ignores content equal to its own last write, so our own saves don't loop.
+      // ignores content equal to its own last write, so the plugin's own saves don't loop.
       try {
         const content = await this.app.vault.read(file);
         this.documentStore.reconcile(file.path, content);
@@ -271,7 +271,7 @@ export default class BlackboardPlugin extends Plugin {
     const contentEl = view?.contentEl ?? null;
     // Persistent pill: only Canvas hosts the collapsed no-surface pill (issue #9). Set the host
     // before activating so the no-surface fallback anchors correctly; Markdown and every other
-    // view type pass null — a Markdown note with an embed still shows the embed's own
+    // view type pass null. A Markdown note with an embed still shows the embed's own
     // auto-activated toolbar via activateForView below.
     const viewType = view?.getViewType?.();
     this.globalToolbar?.setHost(isPillHostViewType(viewType) ? contentEl : null);
@@ -307,8 +307,8 @@ export default class BlackboardPlugin extends Plugin {
 
   async saveSettings(): Promise<void> {
     await this.saveData(this.settings);
-    // Reflect the persistent-pill toggle immediately so a Markdown/Canvas host with no
-    // active surface hides (or restores) the pill without needing a view switch.
+    // Reflect the persistent-pill toggle immediately so a Canvas with no active surface
+    // hides (or restores) the pill without needing a view switch.
     this.globalToolbar?.setPillEnabled(this.settings.showToolbarPill);
     // Re-paint every mounted surface so a board-background change is live (issue #13).
     this.applyBoardBackground();

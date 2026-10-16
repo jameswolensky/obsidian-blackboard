@@ -1,7 +1,7 @@
 #!/usr/bin/env node
-// Guards mirroring the store analyzers that local eslint doesn't cover:
-// CSS !important count and bare `document.` usage in shipped source
-// (comments and src/dev/* excluded). Non-zero counts exit 1.
+// Checks that mirror Obsidian's plugin-review analyzers where local eslint doesn't reach:
+// the CSS !important count and bare `document.` uses in shipped source (comments and
+// src/dev/* skipped). Exits 1 if either count is above zero.
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 

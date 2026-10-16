@@ -46,7 +46,7 @@ function makeBackground(): Background {
   return { type: 'blank', color: 'transparent', grid: false, gridSize: 20 };
 }
 
-describe('getStroke options no longer carry smoothing/streamline', () => {
+describe('getStroke options carry thinning but no smoothing or streamline', () => {
   beforeEach(() => {
     mockGetStroke.mockClear();
   });

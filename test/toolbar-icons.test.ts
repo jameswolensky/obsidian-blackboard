@@ -10,7 +10,7 @@ describe('setToolbarIcon', () => {
 
     const svg = el.querySelector('svg');
     expect(svg).not.toBeNull();
-    // The 1.0.5 regression: nodes outside the SVG namespace render BLANK in WebKit.
+    // Nodes created outside the SVG namespace render BLANK in WebKit (the 1.0.5 regression).
     expect(svg!.namespaceURI).toBe(SVG_NS);
     expect(svg!.getAttribute('viewBox')).toBe('0 0 24 24');
     expect(svg!.getAttribute('stroke')).toBe('currentColor');

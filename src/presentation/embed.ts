@@ -13,8 +13,8 @@ import type { DocumentStore, SharedDocumentHandle } from '../application/documen
 import { engineSurface } from './drawing-surface';
 
 // Tracked document/observer teardown callbacks. Handlers are registered with concrete event
-// types (PointerEvent, TouchEvent, …) and observer entries are invoked with null; method
-// syntax keeps the parameter bivariant so both stay assignable.
+// types (PointerEvent, TouchEvent) and observer entries are called with null. Method syntax
+// keeps the parameter bivariant so both stay assignable.
 type DocListenerFn = { fn(e: Event | null): void }['fn'];
 
 function dbgTarget(t: EventTarget | null): string {
@@ -32,12 +32,12 @@ function isDrawingInput(e: PointerEvent): boolean {
 }
 
 /**
- * Obsidian's mobile bottom editing toolbar appears whenever the Markdown editor (CodeMirror)
- * holds focus. In Live Preview the embed is rendered INSIDE that editor, so a pen-down can
- * leave the editor focused — which raises the bottom toolbar and lets iPadOS Scribble take
- * over the Pencil (drawing then turns into handwriting-to-text). Blurring the focused editor
- * at stroke start keeps that toolbar down, so Scribble never engages. Only blur a genuinely
- * editable/CodeMirror element; never steal focus from anything else.
+ * Obsidian's mobile editing toolbar appears whenever the Markdown editor (CodeMirror) has
+ * focus. In Live Preview the embed sits INSIDE that editor, so a pen-down can leave the
+ * editor focused. That raises the toolbar and lets iPadOS Scribble take over the Pencil
+ * (the drawing turns into handwriting-to-text). Blurring the editor at stroke start keeps the
+ * toolbar down, so Scribble never engages. Only an editable or CodeMirror element is blurred;
+ * focus is never taken from anything else.
  */
 function suppressEditorFocus(): void {
   const active = activeDocument.activeElement as HTMLElement | null;
@@ -47,17 +47,17 @@ function suppressEditorFocus(): void {
 }
 
 /**
- * Cleanups of every live embed mount. Plugin reloads (store update, sync restart,
- * dev hot-swap, manual toggle) MUST unmount all embeds via unmountAllEmbeds():
- * otherwise the surviving DOM keeps dataset.bbMounted='true', the next plugin
- * instance refuses to re-mount, and the user draws on an orphaned engine whose
- * surface the new toolbar has never heard of (dead/disabled toolbar until the
- * note is reopened) — plus the orphan's document-level listeners leak.
+ * Cleanups of every live embed mount, keyed to the embed element. Any plugin unload
+ * (update, sync restart, dev hot-swap, manual toggle) MUST unmount all embeds via
+ * unmountAllEmbeds(). Otherwise the surviving DOM keeps dataset.bbMounted='true', the
+ * next plugin instance refuses to re-mount, and the user draws on an orphaned engine
+ * the new toolbar has never heard of (the toolbar stays disabled until the note is
+ * reopened). The orphan's document-level listeners also leak.
  */
 const liveMounts = new Map<() => void, HTMLElement>();
 
 /**
- * Release every live embed whose element is no longer in the document: Obsidian Canvas
+ * Release every live embed whose element is no longer in the document. Obsidian Canvas
  * unmounts the content of nodes that scroll out of view (or zoom out to placeholders), and
  * notes drop their embeds when closed or virtualised. Each mounted embed holds a drawing
  * engine with two full-size canvas bitmaps plus document listeners, so keeping them alive
@@ -84,14 +84,14 @@ export async function mountBlackboardEmbed(repo: IDrawingRepository, embedEl: HT
   // app/theme rules these must always beat.
   embedEl.setCssStyles({ position: 'relative', display: 'flex', flexDirection: 'column' });
 
-  // The shared document is the single source of truth for this path: the engine renders
-  // from its canonical strokes and writes through it, so sibling surfaces stay in sync
-  // (B2). Without a store (back-compat / isolated tests) we fall back to the repo directly.
+  // The shared document is the single source of truth for this path. The engine renders its
+  // canonical strokes and writes through it, so every other view of the same drawing stays in
+  // sync. Without a store (older callers, isolated tests) this reads and saves via the repo.
   const handle: SharedDocumentHandle | null = store ? await store.acquire(filePath, repo) : null;
   const file = handle ? handle.getFile() : (await repo.load(filePath)).file;
-  // Saved width/height describe the drawing at save time; using them as the fit reference
-  // (rather than the live, growing content bounds) keeps an edit-and-remount round trip
-  // scale-stable (B3).
+  // Saved width/height describe the drawing at save time. Fitting against them (not the
+  // live, growing content bounds) keeps strokes the same size when the embed is edited,
+  // unmounted and mounted again.
   const refFile = () => (handle ? handle.getFile() : file);
 
   const drawingContainer = createDiv();
@@ -138,14 +138,14 @@ export async function mountBlackboardEmbed(repo: IDrawingRepository, embedEl: HT
     docListeners.push({ type: '__observer__', fn: () => observer.disconnect(), capture: false });
   }
 
-  // Fits only ever shrink a drawing, never zoom it in (maxScale = 1), so strokes show at the size
-  // they were drawn and a small drawing sits centred. After the mount fit a Canvas node is a
-  // fixed-scale window that extends/clips on node resize.
+  // Fits only shrink a drawing, never zoom it in (maxScale = 1), so strokes show at the size they
+  // were drawn and a small drawing sits centred. After the mount fit, a Canvas node is a
+  // fixed-scale window: resizing the node shows more or less of the drawing at the same scale.
   const maxFitScale = 1;
 
   const box0 = hostBox();
-  // Share the plugin's single ToolManager so tool/colour/size are global across every
-  // surface (fix-tool-state-isolation).
+  // Share the plugin's single ToolManager so the tool, colour and size are the same on every
+  // surface.
   const engine = new DrawingEngine(drawingContainer, box0.w, box0.h, toolManager);
   engine.loadStrokes(handle ? handle.getStrokes() : file.strokes);
   engine.setDisplaySize(box0.w, box0.h);
@@ -153,12 +153,12 @@ export async function mountBlackboardEmbed(repo: IDrawingRepository, embedEl: HT
   fitAll();
   engine.render();
 
-  // A sibling surface committing notifies us (the drawing changed in another view): reload the
-  // canonical strokes and repaint. Our view transform is KEPT while the drawing still fits in
-  // this frame, so edits elsewhere never rescale it; once it no longer fits, re-fit (debounced)
-  // so the whole drawing shows at its own proportions. The embed/node element is never resized.
-  // Our own strokes never notify us (the store skips the committing surface), so nothing moves
-  // while drawing here. We never persist in response to a notification (no save feedback loop).
+  // Another view committed a change to this drawing: reload the canonical strokes and repaint.
+  // The view transform is KEPT while the drawing still fits in this frame, so edits elsewhere
+  // never rescale it. Once it no longer fits, re-fit 250 ms later (skipped mid-stroke) so the
+  // whole drawing shows at its own proportions. The embed or node element is never resized.
+  // This embed's own strokes never notify it (the store skips the committing surface), so
+  // nothing moves while drawing here. A notification never saves (no save feedback loop).
   let refitTimer = 0;
   if (handle) {
     handle.subscribe(() => {
@@ -175,8 +175,8 @@ export async function mountBlackboardEmbed(repo: IDrawingRepository, embedEl: HT
   }
 
   // The node's LOGICAL rect (canvas units): offsetWidth/offsetHeight and the inline-transform
-  // translate. NOT getBoundingClientRect, whose pixel size changes on canvas zoom — keying off
-  // logical size makes a pure zoom a non-event for the frame logic.
+  // translate. NOT getBoundingClientRect, whose pixel size changes on canvas zoom. Keying off
+  // the logical size makes a pure zoom a non-event for the frame logic.
   function nodeLogicalRect(): { x: number; y: number; w: number; h: number } {
     const node = canvasNode!;
     const w = node.offsetWidth;
@@ -197,10 +197,10 @@ export async function mountBlackboardEmbed(repo: IDrawingRepository, embedEl: HT
   // stretched and strokes render offset from the stylus. Tracked separately from the node rect.
   let lastBox = hostBox();
 
-  // Host resize handling. A Markdown embed re-fits (host-driven sizing, capped at 1× so it
-  // never upscales). A canvas-node embed is a FIXED-SCALE FRAME: it keeps the established
-  // scale and resizes the backing store (resizeBox, transform-preserving) so the drag side
-  // reveals/clips drawable area while the opposite edge stays anchored — never re-fitting.
+  // Host resize handling. A Markdown embed re-fits to its new size (capped at 1x, so it never
+  // zooms in). A Canvas node embed is a FIXED-SCALE FRAME and never re-fits: it keeps its scale
+  // and resizes the backing store (resizeBox keeps the view transform), so the dragged side
+  // shows or hides drawing area while the opposite edge stays anchored.
   const ro = new ResizeObserver(() => {
     if (canvasNode && prevLogical) {
       const cur = nodeLogicalRect();
@@ -214,8 +214,9 @@ export async function mountBlackboardEmbed(repo: IDrawingRepository, embedEl: HT
         engine.resizeBox(box.w, box.h);
         lastBox = box;
       }
-      // Left edge moved (logical x changed): nudge content right/left by Δw so the right edge
-      // stays anchored. Top edge moved (logical y changed): nudge by Δh to anchor the bottom.
+      // Left edge moved (logical x changed): pan by the width change so the right edge
+      // stays anchored. Top edge moved (logical y changed): pan by the height change so
+      // the bottom edge stays anchored.
       if (dw !== 0 && cur.x !== prevLogical.x) engine.panBy(dw, 0);
       if (dh !== 0 && cur.y !== prevLogical.y) engine.panBy(0, dh);
       prevLogical = cur;
@@ -249,8 +250,8 @@ export async function mountBlackboardEmbed(repo: IDrawingRepository, embedEl: HT
 
   const surface = engineSurface(engine, () => { void saveDrawing(); });
   surfaceManager?.register(surface, drawingContainer);
-  // Auto-show the shared toolbar when a page/node already contains a drawing, instead
-  // of waiting for the first pointer interaction.
+  // Show the shared toolbar as soon as a note or node with a drawing mounts, instead of
+  // waiting for the first pointer interaction.
   surfaceManager?.setActive(surface);
 
   let strokeActive = false;
@@ -331,11 +332,12 @@ export async function mountBlackboardEmbed(repo: IDrawingRepository, embedEl: HT
       engine.endStroke();
     }
     if (__DEV_BUILD__ && inputDebugEnabled()) inputDebugLog(`UP committed total=${engine.strokeManager.strokes.length}`);
-    // Tell the toolbar a stroke just committed so it re-syncs undo/redo enablement now,
-    // instead of leaving the undo arrow greyed out until the next tap (QA3).
+    // Tell the toolbar a stroke just committed so it updates undo/redo right away, instead of
+    // leaving the undo arrow greyed out until the next tap.
     surfaceManager?.notifyStrokeEnd();
-    // Do not re-fit the view on stroke end: the view is fitted once on mount and only
-    // re-fitted by the ResizeObserver above. Strokes beyond the node edge are clipped.
+    // No re-fit on stroke end. The view is fitted on mount and re-fitted only on a Markdown
+    // embed resize or when an edit in another view no longer fits. Points past the drawing
+    // container's edge are dropped (handlePoint).
     void saveDrawing();
   };
 
@@ -350,14 +352,13 @@ export async function mountBlackboardEmbed(repo: IDrawingRepository, embedEl: HT
   docListeners.push({ type: 'pointerup', fn: onDocPointerUp, capture: true });
   docListeners.push({ type: 'pointercancel', fn: onDocPointerUp, capture: true });
 
-  // iPadOS Scribble intercepts Apple Pencil pointer events that look like handwriting,
-  // dropping whole strokes before they reach the page. The proven fix (the one Excalidraw
-  // shipped in #4705) is an UNCONDITIONAL non-passive touchstart/touchmove preventDefault on
-  // the drawing surface. We previously gated this on `touchType === 'stylus'`, but inside a
-  // Markdown embed the iPad WKWebView does NOT reliably report the Pencil as a stylus, so the
-  // guard no-opped and Scribble won. Suppress every touch over the embed/drawing surface;
-  // the note still scrolls from outside the embed (accepted tradeoff). Pen draws via pointer
-  // events, which still fire.
+  // iPadOS Scribble intercepts Apple Pencil pointer events that look like handwriting and
+  // drops whole strokes before they reach the page. The fix (the one Excalidraw shipped in
+  // #4705) is an UNCONDITIONAL non-passive touchstart/touchmove preventDefault on the drawing
+  // surface. It is not gated on `touchType === 'stylus'`: inside a Markdown embed the iPad
+  // WKWebView does NOT reliably report the Pencil as a stylus, so a gated guard did nothing
+  // and Scribble won. Every touch over the embed is suppressed (the note still scrolls from
+  // outside the embed). The Pencil draws through pointer events, which still fire.
   embedEl.setCssStyles({ padding: '0' });
   const blockScribble = (e: TouchEvent) => { e.preventDefault(); };
   embedEl.addEventListener('touchstart', blockScribble, { passive: false });
@@ -366,16 +367,14 @@ export async function mountBlackboardEmbed(repo: IDrawingRepository, embedEl: HT
   drawingContainer.addEventListener('touchmove', blockScribble, { passive: false });
 
   // The element-level guards above only fire when the touch's DOM target is the embed or
-  // the drawing container. A Pencil that lands a few px outside the embed border — or on
-  // the host note's contenteditable within Scribble's activation slop, or in any rendered
-  // gap inside the embed not covered by the inner container — is dispatched to the note,
-  // so those listeners never run and Scribble swallows the stroke as text. Back them with
-  // a GEOMETRIC, document-level, capture-phase guard: for any touch whose client coordinates
-  // fall within the embed's rendered rect expanded by an edge margin, call preventDefault
-  // regardless of event.target. The stylus check is intentionally omitted — the Pencil is not
-  // reliably reported as a stylus in the embed, so gating on it let Scribble through. Touches
-  // outside the embed rect+margin are left alone so the note still scrolls. (Real-device
-  // confirmation only; see tasks.md §4.)
+  // the drawing container. A Pencil that lands a few px outside the embed border, on the host
+  // note's contenteditable within Scribble's activation slop, or in a gap inside the embed the
+  // inner container doesn't cover is dispatched to the note,
+  // so those listeners never run and Scribble swallows the stroke as text. Back them with a
+  // GEOMETRIC, document-level, capture-phase guard: any touch within the embed's rendered rect
+  // plus a 12 px margin gets preventDefault, whatever its event.target. There is no stylus
+  // check, for the same reason as above. Touches outside that area are left alone so the note
+  // still scrolls. (This can only be checked on a real iPad.)
   //
   // The guard only acts on touches whose target is inside the host content that holds this
   // embed (the note's editor or reading view, or the Canvas node). The embed's bounding box is

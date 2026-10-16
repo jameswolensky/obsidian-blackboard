@@ -57,7 +57,7 @@ vi.mock('../src/infrastructure/canvas-renderer', () => {
     constructor(container?: HTMLElement, width?: number, height?: number, toolManager?: any) {
       this.drawingWidth = width ?? 800;
       this.drawingHeight = height ?? 600;
-      // Honor an injected shared ToolManager (fix-tool-state-isolation).
+      // Honor an injected shared ToolManager.
       if (toolManager) this.toolManager = toolManager;
     }
   }
@@ -140,7 +140,7 @@ describe('BlackboardView', () => {
   });
 
   describe('detectEmbedded', () => {
-    it('returns true when ancestor has canvas-node-content class', async () => {
+    it('mounts a drawing container when an ancestor has the canvas-node-content class', async () => {
       const view = createView();
       const wrapper = document.createElement('div');
       wrapper.classList.add('canvas-node-content');
@@ -148,11 +148,11 @@ describe('BlackboardView', () => {
 
       await view.onOpen();
 
-      // Embedded views now go straight to edit mode with a drawing container
+      // Embedded views go straight to edit mode with a drawing container
       expect(view.contentEl.querySelector('.blackboard-drawing-container')).not.toBeNull();
     });
 
-    it('returns false when no ancestor has canvas-node-content class', async () => {
+    it('mounts an engine when no ancestor has the canvas-node-content class', async () => {
       const view = createView();
 
       await view.onOpen();
@@ -269,7 +269,7 @@ describe('BlackboardView', () => {
     });
   });
 
-  describe('shared tool state (fix-tool-state-isolation)', () => {
+  describe('shared tool state', () => {
     it('wires the engine to the injected shared ToolManager', async () => {
       const shared = { setDefaults: vi.fn(), activeTool: 'highlighter', activeSize: 30, activeColor: '#ff0000', activeOpacity: 0.3, setTool: vi.fn(), setColor: vi.fn(), setSize: vi.fn() };
       const view = createViewWith(undefined, shared);
@@ -316,7 +316,7 @@ describe('BlackboardView', () => {
   });
 
   describe('setViewData', () => {
-    it('pushes deserialized strokes into engine and centers the standalone surface', async () => {
+    it('pushes deserialized strokes into the engine and fits the standalone surface to its content', async () => {
       const mockStrokes = [{ id: 's1', tool: 'pen', color: '#fff', size: 2, opacity: 1, points: [[0, 0, 0.5]], hasPressure: false, timestamp: 1 }];
       vi.mocked(deserialize).mockReturnValue({
         file: { version: 3, width: 1024, height: 768, strokes: mockStrokes, background: { color: 'transparent' }, settings: { smoothing: 0.5, streamline: 0.5 } },
@@ -348,8 +348,8 @@ describe('BlackboardView', () => {
       view.setViewData('{"version":3}', false);
 
       const dc = (view as any).drawingContainer as HTMLElement;
-      // jsdom has no layout (pane client size 0) so the box falls back to 800x600 —
-      // the point is it is NOT the saved 1920x1080.
+      // jsdom has no layout (pane client size 0), so the box falls back to 800x600. The
+      // point is that it is NOT the saved 1920x1080.
       expect(dc.style.width).not.toBe('1920px');
       expect(dc.style.width).toBe('800px');
       expect(dc.style.height).toBe('600px');
@@ -397,7 +397,7 @@ describe('BlackboardView', () => {
       expect(engine.destroy).toHaveBeenCalledTimes(1);
     });
 
-    it('handles close when no toolbar exists', async () => {
+    it('handles close before open (no engine)', async () => {
       const view = createView();
 
       await view.onClose();
@@ -434,7 +434,7 @@ describe('BlackboardView', () => {
       expect(engine.beginStroke).toHaveBeenCalled();
     });
 
-    it('passes coordinates directly to addPoint without viewport transform', async () => {
+    it('passes an [x, y, pressure] point to addPoint on pointerdown', async () => {
       const view = createView();
       await view.onOpen();
       const engine = (view as any).engine;
@@ -446,7 +446,7 @@ describe('BlackboardView', () => {
       Object.defineProperty(downEvent, 'target', { value: dc, writable: false });
       document.dispatchEvent(downEvent);
 
-      // addPoint should receive CSS-compensated coordinates directly
+      // addPoint receives a three-number [x, y, pressure] point
       expect(engine.addPoint).toHaveBeenCalled();
       const point = engine.addPoint.mock.calls[0][0];
       expect(point).toHaveLength(3);
@@ -697,16 +697,15 @@ describe('BlackboardView', () => {
       expect(event.defaultPrevented).toBe(true);
     });
 
-    // harden-scribble-suppression: a standalone Blackboard must never trigger Scribble, so
-    // the guard extends from the drawing container to the surrounding contentEl margins.
-    // NOTE: jsdom verifies the preventDefault wiring only; true Scribble behaviour near the
-    // pane edges is device-only (tasks.md §4, intentionally unchecked).
+    // A standalone Blackboard must never trigger Scribble, so the guard extends from the
+    // drawing container to the surrounding contentEl margins. jsdom only verifies the
+    // preventDefault wiring; real Scribble behaviour near the pane edges needs an iPad.
     it('prevents touchstart on the standalone contentEl margin outside the drawing container', async () => {
       const view = createView();
       await view.onOpen();
 
       // Target is contentEl itself (the centred margin around the drawing), NOT the inner
-      // drawing container, so only the new contentEl-level guard can prevent default.
+      // drawing container, so only the contentEl-level guard can prevent default.
       const event = new TouchEvent('touchstart', { cancelable: true, bubbles: true });
       Object.defineProperty(event, 'target', { value: view.contentEl, writable: false });
       view.contentEl.dispatchEvent(event);
@@ -736,7 +735,7 @@ describe('BlackboardView', () => {
     });
   });
 
-  // infinite-canvas-standalone: fit-to-content on open, gated by userInteracted.
+  // The standalone view fits its content to the pane on open until the user interacts.
   describe('fit-to-content on open (infinite canvas)', () => {
     it('fits the loaded content into the pane on open while userInteracted is false', async () => {
       const view = createView();
@@ -783,7 +782,7 @@ describe('BlackboardView', () => {
     });
   });
 
-  // infinite-canvas-standalone: gesture arbitration — pen draws, finger navigates.
+  // Gesture arbitration: the pen draws, a finger navigates.
   describe('pan/zoom navigation (infinite canvas)', () => {
     function downAt(target: HTMLElement, x: number, y: number, pointerType: string, pointerId = 1) {
       const e = new PointerEvent('pointerdown', { clientX: x, clientY: y, pointerType, pointerId, bubbles: true, cancelable: true });
@@ -1094,7 +1093,7 @@ describe('BlackboardView', () => {
       expect(view.contentEl.classList.contains('blackboard-standalone-host')).toBe(false);
     });
 
-    it('navigation never writes through the DocumentStore (decoupled from embeds)', async () => {
+    it('navigation never persists the drawing (no write through the DocumentStore)', async () => {
       const view = createView();
       await view.onOpen();
       const engine = (view as any).engine;
@@ -1111,7 +1110,7 @@ describe('BlackboardView', () => {
   });
 });
 
-describe('BlackboardView — shared-document sync (B2 single source of truth)', () => {
+describe('BlackboardView shared-document sync (one source of truth)', () => {
   function strokeOf(id: string): any {
     return { id, tool: 'pen', color: '#fff', size: 2, opacity: 1, points: [[0, 0, 0.5]], hasPressure: false, timestamp: 0 };
   }
@@ -1140,7 +1139,7 @@ describe('BlackboardView — shared-document sync (B2 single source of truth)', 
 
   beforeEach(() => { vi.clearAllMocks(); });
 
-  it('acquires the shared document and seeds the engine from canonical strokes', async () => {
+  it('acquires the shared document from the store on open', async () => {
     const store = new DocumentStore({ saveDelayMs: 0 });
     const repo = mkRepo(fileWith([strokeOf('a')]));
     const view = mountView(store, repo, 'D.blackboard');

@@ -39,7 +39,7 @@ function createMockContainer(): HTMLElement {
   return container;
 }
 
-describe('DrawingEngine — shared tool state (B4: tool leak across surfaces)', () => {
+describe('DrawingEngine shared tool state (no tool leak across surfaces)', () => {
   it('uses an injected shared ToolManager instead of constructing its own', () => {
     const shared = new ToolManager({ ...DEFAULT_TOOL_STATE });
     const engine = new DrawingEngine(createMockContainer(), 800, 600, shared);
@@ -47,7 +47,7 @@ describe('DrawingEngine — shared tool state (B4: tool leak across surfaces)', 
     expect(engine.toolManager).toBe(shared);
   });
 
-  it('every surface reflects a tool switch — no per-surface divergence', () => {
+  it('every surface reflects a tool switch (no per-surface divergence)', () => {
     // Repro of the reported bug: two drawings (top + bottom) backed by independent
     // tool state. Switching to highlighter while drawing on one left the other stuck
     // on pen, so the next stroke on the other surface committed as the wrong tool.
@@ -62,7 +62,7 @@ describe('DrawingEngine — shared tool state (B4: tool leak across surfaces)', 
     expect(top.toolManager.activeTool).toBe('highlighter');
   });
 
-  it('per-tool colour and size are global across surfaces (S7)', () => {
+  it('per-tool colour and size are global across surfaces', () => {
     const shared = new ToolManager({ ...DEFAULT_TOOL_STATE });
     const a = new DrawingEngine(createMockContainer(), 800, 600, shared);
     const b = new DrawingEngine(createMockContainer(), 800, 600, shared);
@@ -77,7 +77,7 @@ describe('DrawingEngine — shared tool state (B4: tool leak across surfaces)', 
     expect(b.toolManager.activeSize).toBe(8);
   });
 
-  it('a surface mounted after a mutation inherits the live state, not the defaults (S7)', () => {
+  it('a surface mounted after a change inherits the live state, not the defaults', () => {
     const shared = new ToolManager({ ...DEFAULT_TOOL_STATE });
     const a = new DrawingEngine(createMockContainer(), 800, 600, shared);
 
@@ -90,7 +90,7 @@ describe('DrawingEngine — shared tool state (B4: tool leak across surfaces)', 
     expect(late.toolManager.activeSize).toBe(30);
   });
 
-  it('B4: a stroke on surface A commits as the current tool after switching on surface B', () => {
+  it('a stroke on surface A commits as the current tool after switching on surface B', () => {
     const shared = new ToolManager({ ...DEFAULT_TOOL_STATE });
     const a = new DrawingEngine(createMockContainer(), 800, 600, shared);
     const b = new DrawingEngine(createMockContainer(), 800, 600, shared);
@@ -211,7 +211,7 @@ describe('DrawingEngine', () => {
     expect(act).not.toThrow();
   });
 
-  it('destroy nulls out internal canvases', () => {
+  it('destroy leaves no canvas in the container', () => {
     const container = createMockContainer();
     const engine = new DrawingEngine(container);
 
@@ -745,7 +745,7 @@ describe('DrawingEngine active-stroke bookkeeping', () => {
   });
 });
 
-describe('DrawingEngine — stable reference-size fit (B3 idempotent embed fit)', () => {
+describe('DrawingEngine stable reference-size fit (same fit on every mount)', () => {
   function strokeAt(x: number, y: number, len: number): any {
     const points: any[] = [];
     for (let i = 0; i <= len; i++) points.push([x + i, y + i, 0.5]);
@@ -824,8 +824,8 @@ describe('DrawingEngine — stable reference-size fit (B3 idempotent embed fit)'
     expect(engine.getViewTransform()).toEqual({ scale: 1, offsetX: 0, offsetY: 0 });
   });
 
-  // markdown-embed-frame: the reference-size fit threads a maxScale cap so a Markdown embed
-  // never upscales a small drawing past natural size.
+  // The reference-size fit takes a maxScale cap so an embed never enlarges a small drawing
+  // past natural size.
   it('caps the view scale at maxScale when the reference is smaller than the box', () => {
     const engine = new DrawingEngine(createMockContainer(), 800, 600);
     engine.loadStrokes([strokeAt(0, 0, 100)]);
@@ -846,9 +846,8 @@ describe('DrawingEngine — stable reference-size fit (B3 idempotent embed fit)'
   });
 });
 
-// canvas-rendering: presentation-facing transform mutators (setView/panBy/zoomAt). These
-// drive pan/zoom on a surface WITHOUT touching the render pipeline; they clamp scale to
-// [0.1, 8], mark the static layer dirty, and request a render.
+// Transform mutators the presentation layer uses for pan/zoom (setView/panBy/zoomAt). They
+// clamp scale to [0.1, 8], mark the static layer dirty, and request a render.
 describe('DrawingEngine transform mutators (setView / panBy / zoomAt)', () => {
   function engineAt(boxW: number, boxH: number) {
     const e = new DrawingEngine(createMockContainer(), boxW, boxH);

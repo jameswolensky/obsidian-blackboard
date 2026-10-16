@@ -1,6 +1,6 @@
 // Regression: a Canvas .blackboard node is rendered by Obsidian's embedded BlackboardView
-// (a TextFileView). When Obsidian tears down / reuses / suspends the view it can call
-// clear() — which empties the engine — and then getViewData() to persist. If getViewData()
+// (a TextFileView). When Obsidian tears down, reuses or suspends the view it can call
+// clear(), which empties the engine, and then getViewData() to persist. If getViewData()
 // rebuilds from the now-empty engine it returns an EMPTY serialization, and Obsidian writes
 // that over a drawing that still has strokes. On iPad this is the "lock the screen, come
 // back, some canvas drawings are completely blank" data-loss bug.
@@ -50,7 +50,7 @@ function fileWith(strokes: Stroke[]): string {
   return serialize({ version: 3, width: 100, height: 80, strokes, background: { color: 'transparent' } });
 }
 
-describe('BlackboardView — data loss on clear()+getViewData()', () => {
+describe('BlackboardView data loss on clear() then getViewData()', () => {
   beforeEach(() => vi.clearAllMocks());
 
   it('getViewData() after clear() must not overwrite a drawing with an empty file', async () => {
@@ -72,11 +72,11 @@ describe('BlackboardView — data loss on clear()+getViewData()', () => {
 
   // Regression (2026-08-21, iPad): the guard above protects getViewData(), but when the
   // DOCUMENT STORE is active the store is the single writer and persist() commits straight
-  // to it — getViewData() is never consulted. So the same clear()-then-write race still
+  // to it, so getViewData() is never consulted. The same clear()-then-write race still
   // blanked files: clear() empties the engine and sets contentLoaded=false, the handle is
   // STILL attached, and any later persist() (a stray pointerup/pointercancel after an iPad
-  // suspend, or an erase) commits an EMPTY buildFile() over a real drawing — which the store
-  // then saves to disk AND pushes to every sibling view. persist() needs its own guard.
+  // suspend, or an erase) commits an EMPTY buildFile() over a real drawing. The store then
+  // saves that to disk AND pushes it to every sibling view. persist() needs its own guard.
   it('persist() after clear() must not commit an empty drawing through the store', async () => {
     const view = new BlackboardView(new WorkspaceLeaf(), DEFAULT_PLUGIN_SETTINGS);
     await view.onOpen();

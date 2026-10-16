@@ -30,18 +30,17 @@ export interface ToolState {
 }
 
 /**
- * The per-tool default values seeded once into the shared `ToolManager`. Mirrors the
- * prior `default*` settings so first-run tool behavior is unchanged now that those
- * settings fields are gone.
+ * Starting color and size for each tool, given once to the plugin's single shared
+ * `ToolManager` when the plugin loads.
  */
 export const DEFAULT_TOOL_STATE: ToolState = {
   activeTool: 'pen',
   penColor: '#ffffff',
   penSize: 2,
   highlighterColor: '#ffff00',
-  // The highlighter has its own wider size scale (HIGHLIGHTER_SIZES); its default lands on
-  // a mid preset (22) so a marker looks like a marker. The eraser default lands on a real
-  // PEN_SIZES preset (8) so the size popover can highlight its selected dot.
+  // The highlighter has its own wider size scale (HIGHLIGHTER_SIZES), and 22 is its middle
+  // preset so it looks like a marker. The eraser default (8) is one of the PEN_SIZES presets
+  // so the size popover can mark its dot as selected.
   highlighterSize: 22,
   eraserSize: 8,
 };
@@ -60,15 +59,15 @@ export interface PluginSettings {
   /** Exactly eight color shortcuts (6-digit hex) in toolbar display order. */
   paletteColors: string[];
   /**
-   * Whether the collapsed toolbar pill (the circular pen-icon affordance) is shown on
-   * Markdown/Canvas host views with no active drawing surface. True preserves the
-   * always-present pill; false suppresses only that persistent no-surface pill.
+   * Shows the collapsed toolbar pill (the round button that opens the toolbar) on Markdown
+   * and Canvas views with no active drawing. False hides only that pill; a pill the user
+   * collapses on an active drawing still shows.
    */
   showToolbarPill: boolean;
   /**
-   * CSS color painted behind every drawing surface (standalone view, Markdown embed, and
-   * Canvas node). Default '#000000' keeps the classic blackboard; set '#ffffff' for a
-   * whiteboard, or any CSS color. Applies on-screen only — SVG export stays transparent.
+   * CSS color painted behind every drawing surface (full-page view, Markdown embed and
+   * Canvas node). The default '#000000' is a blackboard; '#ffffff' gives a whiteboard, and
+   * any CSS color works. It only applies on screen (SVG export stays transparent).
    */
   boardBackground: string;
 }
@@ -92,9 +91,9 @@ const HEX6 = /^#[0-9a-fA-F]{6}$/;
 
 export interface BlackboardFile {
   version: number;
-  /** Content bounding-box dimensions, cached on save (recomputable from strokes). */
+  /** Content bounding-box width, cached on save (recomputable from strokes). */
   width: number;
-  /** Content bounding-box dimensions, cached on save (recomputable from strokes). */
+  /** Content bounding-box height, cached on save (recomputable from strokes). */
   height: number;
   strokes: Stroke[];
   background: { color: string };
@@ -167,8 +166,8 @@ export function validateSettings(settings: PluginSettings): PluginSettings {
   if (typeof result.boardBackground !== 'string' || result.boardBackground === '') {
     result.boardBackground = '#000000';
   }
-  // Palette: a non-array or wrong-length value is reset wholesale; an eight-entry array
-  // has only its invalid hex entries repaired in place to the default at that index.
+  // Palette: a non-array or wrong-length value is reset to the defaults. In an eight-entry
+  // array, only the invalid hex entries are replaced, each with the default at its index.
   if (!Array.isArray(result.paletteColors) || result.paletteColors.length !== 8) {
     result.paletteColors = [...DEFAULT_PALETTE_COLORS];
   } else {
