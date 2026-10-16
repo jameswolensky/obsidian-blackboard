@@ -943,6 +943,45 @@ describe('BlackboardView', () => {
       document.dispatchEvent(new KeyboardEvent('keyup', { code: 'Space', bubbles: true }));
     });
 
+    it('Space does not page-scroll the pane while this view is active (it is the pan modifier)', async () => {
+      const view = createView();
+      await view.onOpen();
+      (view as any).app = { workspace: { getActiveViewOfType: () => view } };
+      const ev = new KeyboardEvent('keydown', { code: 'Space', bubbles: true, cancelable: true });
+      document.dispatchEvent(ev);
+      expect(ev.defaultPrevented).toBe(true);
+      expect((view as any).spaceDown).toBe(true);
+      document.dispatchEvent(new KeyboardEvent('keyup', { code: 'Space', bubbles: true }));
+      await view.onClose();
+    });
+
+    it('Space still types normally in a text field and when another view is active', async () => {
+      const view = createView();
+      await view.onOpen();
+      (view as any).app = { workspace: { getActiveViewOfType: () => view } };
+      const input = document.createElement('input');
+      document.body.appendChild(input);
+      const inField = new KeyboardEvent('keydown', { code: 'Space', bubbles: true, cancelable: true });
+      input.dispatchEvent(inField);
+      expect(inField.defaultPrevented).toBe(false);
+      input.remove();
+
+      (view as any).app = { workspace: { getActiveViewOfType: () => null } };
+      const elsewhere = new KeyboardEvent('keydown', { code: 'Space', bubbles: true, cancelable: true });
+      document.dispatchEvent(elsewhere);
+      expect(elsewhere.defaultPrevented).toBe(false);
+      document.dispatchEvent(new KeyboardEvent('keyup', { code: 'Space', bubbles: true }));
+      await view.onClose();
+    });
+
+    it('marks the pane non-scrolling (the surface fills it; navigation is the view transform)', async () => {
+      const view = createView();
+      await view.onOpen();
+      expect(view.contentEl.classList.contains('blackboard-standalone-host')).toBe(true);
+      await view.onClose();
+      expect(view.contentEl.classList.contains('blackboard-standalone-host')).toBe(false);
+    });
+
     it('navigation never writes through the DocumentStore (decoupled from embeds)', async () => {
       const view = createView();
       await view.onOpen();
