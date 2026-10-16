@@ -1172,6 +1172,24 @@ describe('BlackboardView — shared-document sync (B2 single source of truth)', 
     expect(engine.refitToContent).not.toHaveBeenCalled(); // no re-fit on sibling reload
   });
 
+  // Obsidian reloads the view (setViewData) after the store's own save lands on disk. That
+  // reload must not replace the engine's strokes: it wiped the undo history after every stroke,
+  // and when the save was slow (iPad) it carried an older file and erased the newest stroke.
+  it("ignores Obsidian's reload after its own save once the store owns the drawing", async () => {
+    const store = new DocumentStore({ saveDelayMs: 0 });
+    const repo = mkRepo(fileWith([strokeOf('a')]));
+    const view = mountView(store, repo, 'G.blackboard');
+    await view.onOpen();
+    await tick();
+    const engine = (view as any).engine;
+    engine.loadStrokes.mockClear();
+
+    view.setViewData('{"version":3,"strokes":[]}', false);
+
+    expect(engine.loadStrokes).not.toHaveBeenCalled();
+    expect((view as any).fileData).toBe('{"version":3,"strokes":[]}');
+  });
+
   it('commits a finished stroke through the store so siblings refresh', async () => {
     const store = new DocumentStore({ saveDelayMs: 0 });
     const repo = mkRepo(fileWith([strokeOf('a')]));

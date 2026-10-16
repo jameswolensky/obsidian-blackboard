@@ -318,6 +318,11 @@ export class BlackboardView extends TextFileView {
 
   setViewData(data: string, clear: boolean): void {
     this.fileData = data;
+    // Once the store owns this drawing, Obsidian's reload after a save is the store's own write
+    // coming back (outside edits reach us through the store's reconcile instead). Reloading the
+    // engine here wiped the undo history after every stroke, and when the write was slow (iPad)
+    // it carried an older file and erased the stroke drawn meanwhile.
+    if (this.handle && !clear) return;
     if (this.engine) {
       if (clear) this.engine.strokeManager.reset();
       try {
