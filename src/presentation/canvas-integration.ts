@@ -3,7 +3,7 @@ import type { PluginSettings } from '../domain/entities';
 import type { IDrawingRepository } from '../domain/ports';
 import { CreateDrawingUseCase } from '../application/use-cases/create-drawing';
 import { FILE_EXTENSION, VIEW_TYPE } from './blackboard-view';
-import { mountBlackboardEmbed } from './embed';
+import { mountBlackboardEmbed, releaseDetachedEmbeds } from './embed';
 import type { SurfaceManager } from './surface-manager';
 import type { ToolManager } from '../domain/tool-manager';
 import type { DocumentStore } from '../application/document-store';
@@ -119,16 +119,48 @@ export function insertExistingDrawing(app: App, repo: IDrawingRepository, settin
   }).open();
 }
 
+// Nodes waiting to mount, drained a couple per animation frame: a pan or zoom can bring a whole
+// row of drawings into view at once, and mounting them all in one frame (bitmap allocation,
+// parse, first render) stalls the Canvas for 100+ ms. Spread out, each frame stays short and
+// every node is still drawable within a few frames of appearing.
+const MOUNTS_PER_FRAME = 2;
+const mountQueue = new Map<HTMLElement, () => void>();
+let drainScheduled = false;
+
+function drainMountQueue(): void {
+  drainScheduled = false;
+  let n = 0;
+  for (const [contentEl, mount] of Array.from(mountQueue)) {
+    mountQueue.delete(contentEl);
+    // Still attached and not mounted by someone else meanwhile.
+    if (!contentEl.isConnected || contentEl.dataset.bbMounted === 'true') continue;
+    mount();
+    if (++n >= MOUNTS_PER_FRAME) break;
+  }
+  if (mountQueue.size > 0) scheduleDrain();
+}
+
+function scheduleDrain(): void {
+  if (drainScheduled) return;
+  drainScheduled = true;
+  window.requestAnimationFrame(drainMountQueue);
+}
+
 function patchCanvasFileNodes(repo: IDrawingRepository, app: App, settings: PluginSettings, surfaceManager?: SurfaceManager, toolManager?: ToolManager, store?: DocumentStore): void {
   const leaf = app.workspace.getMostRecentLeaf();
   if (!leaf) return;
   const view = leaf?.view as CanvasHostLike | undefined;
   if (!view?.canvas) return;
+  releaseDetachedEmbeds();
 
   for (const node of view.canvas.nodes.values()) {
     if (!node.file || node.file.extension !== FILE_EXTENSION) continue;
     const contentEl = node.contentEl;
     if (!contentEl || contentEl.dataset.bbMounted === 'true') continue;
+    // Only mount into content Obsidian has actually attached: off-screen and zoomed-out nodes
+    // keep a detached contentEl (a placeholder is shown), and a drawing engine there would hold
+    // full-size bitmaps and listeners for a node nobody can see.
+    if (!contentEl.isConnected) continue;
 
     const hasPreview = contentEl.querySelector('.blackboard-preview-img') || contentEl.querySelector('.blackboard-placeholder');
     if (hasPreview) continue;
@@ -139,11 +171,16 @@ function patchCanvasFileNodes(repo: IDrawingRepository, app: App, settings: Plug
     // present, skip — mounting a second engine would paint the in-progress stroke twice.
     if (contentEl.querySelector('.blackboard-static')) continue;
 
-    void mountBlackboardEmbed(repo, contentEl, node.file.path, settings, surfaceManager, toolManager, store);
+    if (mountQueue.has(contentEl)) continue;
+    const path = node.file.path;
+    mountQueue.set(contentEl, () => {
+      void mountBlackboardEmbed(repo, contentEl, path, settings, surfaceManager, toolManager, store);
+    });
     // No automatic content-driven node sizing: a drawing must only ever resize when
     // the user resizes the node. Growing the node to match strokes made the node creep
     // larger as you drew near an edge.
   }
+  if (mountQueue.size > 0) scheduleDrain();
 }
 
 export function patchCanvas(app: App, plugin: Plugin, settings: PluginSettings, repo: IDrawingRepository, createDrawing: CreateDrawingUseCase, surfaceManager?: SurfaceManager, toolManager?: ToolManager, store?: DocumentStore): void {

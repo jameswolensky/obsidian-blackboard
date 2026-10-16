@@ -1621,6 +1621,31 @@ describe('unmountAllEmbeds — plugin reload lifecycle', () => {
     el.remove();
   });
 
+  it('releaseDetachedEmbeds frees only embeds whose element left the page, and they can mount again', async () => {
+    const { mountBlackboardEmbed, releaseDetachedEmbeds, unmountAllEmbeds } = await import('../src/presentation/embed');
+    const repo = makeRepo();
+    const onPage = document.createElement('div');
+    const offPage = document.createElement('div');
+    document.body.append(onPage, offPage);
+    await mountBlackboardEmbed(repo, onPage, 'A.blackboard', makeSettings());
+    await mountBlackboardEmbed(repo, offPage, 'B.blackboard', makeSettings());
+    const removeSpy = vi.spyOn(document, 'removeEventListener');
+
+    offPage.remove(); // e.g. Canvas unmounted an off-screen node's content
+    releaseDetachedEmbeds();
+
+    expect(offPage.dataset.bbMounted).toBe('false');
+    expect(onPage.dataset.bbMounted).toBe('true');
+    expect(removeSpy.mock.calls.some(([t]) => t === 'pointermove')).toBe(true); // its document listeners are gone
+
+    document.body.appendChild(offPage); // scrolled back into view
+    await mountBlackboardEmbed(repo, offPage, 'B.blackboard', makeSettings());
+    expect(offPage.dataset.bbMounted).toBe('true');
+    removeSpy.mockRestore();
+    unmountAllEmbeds();
+    onPage.remove(); offPage.remove();
+  });
+
   it('an individually cleaned-up embed is not cleaned twice by unmountAllEmbeds', async () => {
     const { mountBlackboardEmbed, unmountAllEmbeds } = await import('../src/presentation/embed');
     const repo = makeRepo();

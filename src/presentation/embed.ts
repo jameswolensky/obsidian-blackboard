@@ -54,10 +54,24 @@ function suppressEditorFocus(): void {
  * surface the new toolbar has never heard of (dead/disabled toolbar until the
  * note is reopened) — plus the orphan's document-level listeners leak.
  */
-const liveMounts = new Set<() => void>();
+const liveMounts = new Map<() => void, HTMLElement>();
+
+/**
+ * Release every live embed whose element is no longer in the document: Obsidian Canvas
+ * unmounts the content of nodes that scroll out of view (or zoom out to placeholders), and
+ * notes drop their embeds when closed or virtualised. Each mounted embed holds a drawing
+ * engine with two full-size canvas bitmaps plus document listeners, so keeping them alive
+ * makes memory and per-event cost grow with every drawing ever shown. Cleanup resets the
+ * mount marker, so the embed mounts again if Obsidian re-attaches its element.
+ */
+export function releaseDetachedEmbeds(): void {
+  for (const [cleanup, el] of Array.from(liveMounts)) {
+    if (!el.isConnected) cleanup();
+  }
+}
 
 export function unmountAllEmbeds(): void {
-  for (const cleanup of Array.from(liveMounts)) cleanup();
+  for (const cleanup of Array.from(liveMounts.keys())) cleanup();
   liveMounts.clear();
 }
 
@@ -98,8 +112,12 @@ export async function mountBlackboardEmbed(repo: IDrawingRepository, embedEl: HT
     return { w, h };
   }
 
-  embedEl.addEventListener('click', (e) => { e.stopPropagation(); e.stopImmediatePropagation(); }, true);
-  embedEl.addEventListener('dblclick', (e) => { e.stopPropagation(); e.stopImmediatePropagation(); }, true);
+  // Removed in cleanup: a Canvas node's contentEl (embedEl) is reused across mount/unmount
+  // cycles, so a listener left behind would keep this whole mount (engine, strokes, bitmaps)
+  // alive and stack up with every remount.
+  const swallowClick = (e: Event) => { e.stopPropagation(); e.stopImmediatePropagation(); };
+  embedEl.addEventListener('click', swallowClick, true);
+  embedEl.addEventListener('dblclick', swallowClick, true);
 
   const docListeners: Array<{ type: string; fn: DocListenerFn; capture: boolean }> = [];
 
@@ -392,6 +410,8 @@ export async function mountBlackboardEmbed(repo: IDrawingRepository, embedEl: HT
       if (l.type === '__observer__') { l.fn(null); } else { activeDocument.removeEventListener(l.type, l.fn, l.capture); }
     }
     window.clearTimeout(refitTimer);
+    embedEl.removeEventListener('click', swallowClick, true);
+    embedEl.removeEventListener('dblclick', swallowClick, true);
     embedEl.removeEventListener('touchstart', blockScribble);
     embedEl.removeEventListener('touchmove', blockScribble);
     surfaceManager?.unregister(surface);
@@ -399,6 +419,6 @@ export async function mountBlackboardEmbed(repo: IDrawingRepository, embedEl: HT
     handle?.release();
     embedEl.dataset.bbMounted = 'false';
   };
-  liveMounts.add(cleanup);
+  liveMounts.set(cleanup, embedEl);
   return cleanup;
 }

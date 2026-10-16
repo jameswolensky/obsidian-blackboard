@@ -6,6 +6,7 @@ import type { IDrawingRepository } from '../src/domain/ports';
 
 vi.mock('../src/presentation/embed', () => ({
   mountBlackboardEmbed: vi.fn(),
+  releaseDetachedEmbeds: vi.fn(),
 }));
 
 vi.mock('../src/application/file-format', () => ({
@@ -25,7 +26,7 @@ import {
   patchCanvas,
 } from '../src/presentation/canvas-integration';
 import * as canvasIntegration from '../src/presentation/canvas-integration';
-import { mountBlackboardEmbed } from '../src/presentation/embed';
+import { mountBlackboardEmbed, releaseDetachedEmbeds } from '../src/presentation/embed';
 
 function createMockApp() {
   return {
@@ -518,8 +519,11 @@ describe('patchCanvasFileNodes (via patchCanvas layout-change handler)', () => {
     vi.useRealTimers();
   });
 
-  function fileNode(path: string) {
+  // Obsidian attaches a node's content element to the page only while the node's content is
+  // mounted (on screen, zoomed in enough); `attached: false` models an off-screen node.
+  function fileNode(path: string, attached = true) {
     const contentEl = document.createElement('div');
+    if (attached) document.body.appendChild(contentEl);
     return {
       file: { extension: 'blackboard', path },
       contentEl,
@@ -537,6 +541,7 @@ describe('patchCanvasFileNodes (via patchCanvas layout-change handler)', () => {
     patchCanvas(mockApp, mockPlugin, { ...DEFAULT_PLUGIN_SETTINGS }, repo, createMockCreateDrawing(''));
     const layoutChangeCalls = mockApp.workspace.on.mock.calls.filter((c: any) => c[0] === 'layout-change');
     layoutChangeCalls[0][1]();
+    vi.advanceTimersToNextFrame(); // mounts are drained on the next animation frame
   }
 
   it('mounts an unmounted .blackboard file node via mountBlackboardEmbed', () => {
@@ -553,6 +558,39 @@ describe('patchCanvasFileNodes (via patchCanvas layout-change handler)', () => {
     const call = vi.mocked(mountBlackboardEmbed).mock.calls[0];
     expect(call[1]).toBe(node.contentEl);
     expect(call[2]).toBe('A.blackboard');
+  });
+
+  it('does not mount a node whose content Obsidian has not attached (off-screen / zoomed-out placeholder)', () => {
+    const repo = createMockRepo();
+    const node = fileNode('A.blackboard', false);
+    const canvas = { cardMenuEl: document.createElement('div'), nodes: new Map([['a', node]]) };
+
+    runLayoutHandler(canvas, repo);
+
+    expect(mountBlackboardEmbed).not.toHaveBeenCalled();
+  });
+
+  it('mounts at most two newly visible nodes per frame, then the rest on following frames', () => {
+    const repo = createMockRepo();
+    const nodes = Array.from({ length: 5 }, (_, i) => [String(i), fileNode(`N${i}.blackboard`)] as const);
+    const canvas = { cardMenuEl: document.createElement('div'), nodes: new Map(nodes) };
+
+    runLayoutHandler(canvas, repo); // advances exactly one frame
+    expect(mountBlackboardEmbed).toHaveBeenCalledTimes(2);
+    vi.advanceTimersToNextFrame();
+    expect(mountBlackboardEmbed).toHaveBeenCalledTimes(4);
+    vi.advanceTimersToNextFrame();
+    expect(mountBlackboardEmbed).toHaveBeenCalledTimes(5);
+  });
+
+  it('releases embeds whose elements left the page before mounting new ones', () => {
+    const repo = createMockRepo();
+    const canvas = { cardMenuEl: document.createElement('div'), nodes: new Map() };
+    vi.mocked(releaseDetachedEmbeds).mockClear();
+
+    runLayoutHandler(canvas, repo);
+
+    expect(releaseDetachedEmbeds).toHaveBeenCalled();
   });
 
   it('threads the shared ToolManager through to mountBlackboardEmbed (fix-tool-state-isolation)', () => {
@@ -574,6 +612,7 @@ describe('patchCanvasFileNodes (via patchCanvas layout-change handler)', () => {
     patchCanvas(mockApp, mockPlugin, { ...DEFAULT_PLUGIN_SETTINGS }, repo, createMockCreateDrawing(''), undefined, sharedToolManager);
     const layoutChangeCalls = mockApp.workspace.on.mock.calls.filter((c: any) => c[0] === 'layout-change');
     layoutChangeCalls[0][1]();
+    vi.advanceTimersToNextFrame();
 
     expect(mountBlackboardEmbed).toHaveBeenCalledTimes(1);
     // 6th arg (index 5) is the shared ToolManager.
@@ -648,6 +687,7 @@ describe('patchCanvasFileNodes (via patchCanvas layout-change handler)', () => {
     patchCanvas(mockApp, mockPlugin, { ...DEFAULT_PLUGIN_SETTINGS }, repo, createMockCreateDrawing(''), undefined, undefined, sharedStore);
     const layoutChangeCalls = mockApp.workspace.on.mock.calls.filter((c: any) => c[0] === 'layout-change');
     layoutChangeCalls[0][1]();
+    vi.advanceTimersToNextFrame();
 
     expect(mountBlackboardEmbed).toHaveBeenCalledTimes(1);
     // 7th arg (index 6) is the shared DocumentStore.

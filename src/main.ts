@@ -9,7 +9,7 @@ import { ExportSvgUseCase } from './application/use-cases/export-svg';
 import { BlackboardView, VIEW_TYPE, FILE_EXTENSION } from './presentation/blackboard-view';
 import { insertDrawingAtCursor, insertExistingDrawing, patchCanvas } from './presentation/canvas-integration';
 import { BlackboardSettingTab } from './presentation/settings';
-import { mountBlackboardEmbed, unmountAllEmbeds } from './presentation/embed';
+import { mountBlackboardEmbed, releaseDetachedEmbeds, unmountAllEmbeds } from './presentation/embed';
 import { SurfaceManager } from './presentation/surface-manager';
 import { DocumentStore } from './application/document-store';
 import { GlobalToolbar } from './presentation/global-toolbar';
@@ -159,6 +159,7 @@ export default class BlackboardPlugin extends Plugin {
     patchCanvas(this.app, this, this.settings, this.repo, this.createDrawingUseCase, this.surfaceManager, this.toolManager, this.documentStore);
 
     const processEmbeds = () => {
+      releaseDetachedEmbeds();
       const embeds = activeDocument.querySelectorAll('.internal-embed.mod-generic.is-loaded');
       embeds.forEach((embedEl) => {
         const src = (embedEl as HTMLElement).getAttribute('src') || '';
