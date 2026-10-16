@@ -39,6 +39,7 @@ vi.mock('../src/infrastructure/canvas-renderer', () => {
       setDisplaySize = vi.fn();
       refitToContent = vi.fn();
       fitReferenceSize = vi.fn();
+      contentFitsView = vi.fn(() => true);
       resizeBox = vi.fn();
       panBy = vi.fn();
       setView = vi.fn();
@@ -1114,6 +1115,79 @@ describe('embed shared-document sync (B2: multi-surface single source of truth)'
 
     cleanupA();
     cleanupB();
+  });
+
+  const drawOn = (embed: HTMLElement) => {
+    const dc = embed.querySelector('.blackboard-drawing-container') as HTMLElement;
+    const down = new PointerEvent('pointerdown', { clientX: 5, clientY: 5, bubbles: true, cancelable: true, pointerType: 'pen' });
+    Object.defineProperty(down, 'target', { value: dc, writable: false });
+    document.dispatchEvent(down);
+    document.dispatchEvent(new PointerEvent('pointerup', { clientX: 6, clientY: 6, bubbles: true, pointerType: 'pen' }));
+  };
+
+  it('a sibling edit that no longer fits re-fits the whole drawing (debounced) without resizing the embed', async () => {
+    vi.useFakeTimers();
+    const embedA = makeEmbed();
+    const embedB = makeEmbed();
+    embedB.style.width = '400px';
+    embedB.style.height = '300px';
+    const cleanupA = await mountBlackboardEmbed(repo, embedA, filePath, settings, undefined, undefined, store);
+    const cleanupB = await mountBlackboardEmbed(repo, embedB, filePath, settings, undefined, undefined, store);
+    const engineB = engineInstances.at(-1)!;
+    engineB.fitReferenceSize.mockClear();
+    engineB.contentFitsView.mockReturnValue(false); // the edit went outside B's frame
+
+    drawOn(embedA);
+    expect(engineB.fitReferenceSize).not.toHaveBeenCalled(); // debounced
+    vi.advanceTimersByTime(300);
+
+    expect(engineB.fitReferenceSize).toHaveBeenCalledTimes(1);
+    const args = engineB.fitReferenceSize.mock.calls[0];
+    expect(args[2]).toBe(0);  // no content-space padding
+    expect(args[4]).toBe(8);  // screen-px margin
+    expect(embedB.style.width).toBe('400px'); // the embed element is never resized
+    expect(embedB.style.height).toBe('300px');
+    cleanupA();
+    cleanupB();
+    vi.useRealTimers();
+  });
+
+  it('a sibling edit that still fits keeps the frame (no re-fit)', async () => {
+    vi.useFakeTimers();
+    const embedA = makeEmbed();
+    const embedB = makeEmbed();
+    const cleanupA = await mountBlackboardEmbed(repo, embedA, filePath, settings, undefined, undefined, store);
+    const cleanupB = await mountBlackboardEmbed(repo, embedB, filePath, settings, undefined, undefined, store);
+    const engineB = engineInstances.at(-1)!;
+    engineB.fitReferenceSize.mockClear();
+    engineB.contentFitsView.mockReturnValue(true);
+
+    drawOn(embedA);
+    vi.advanceTimersByTime(300);
+
+    expect(engineB.fitReferenceSize).not.toHaveBeenCalled();
+    cleanupA();
+    cleanupB();
+    vi.useRealTimers();
+  });
+
+  it('own strokes never re-fit the surface they were drawn on', async () => {
+    vi.useFakeTimers();
+    const embedA = makeEmbed();
+    const embedB = makeEmbed();
+    const cleanupA = await mountBlackboardEmbed(repo, embedA, filePath, settings, undefined, undefined, store);
+    const engineA = engineInstances.at(-1)!;
+    const cleanupB = await mountBlackboardEmbed(repo, embedB, filePath, settings, undefined, undefined, store);
+    engineA.fitReferenceSize.mockClear();
+    engineA.contentFitsView.mockReturnValue(false);
+
+    drawOn(embedA);
+    vi.advanceTimersByTime(300);
+
+    expect(engineA.fitReferenceSize).not.toHaveBeenCalled();
+    cleanupA();
+    cleanupB();
+    vi.useRealTimers();
   });
 
   it('releasing the last embed drops the entry so a later mount reloads from disk', async () => {

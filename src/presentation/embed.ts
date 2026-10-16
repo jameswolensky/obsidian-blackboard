@@ -24,6 +24,9 @@ function dbgTarget(t: EventTarget | null): string {
   return el.tagName.toLowerCase() + cls;
 }
 
+/** Screen-px margin kept around the drawing when an embed fits it. */
+const EMBED_FIT_MARGIN = 8;
+
 function isDrawingInput(e: PointerEvent): boolean {
   return e.pointerType === 'pen' || e.pointerType === 'mouse';
 }
@@ -129,17 +132,28 @@ export async function mountBlackboardEmbed(repo: IDrawingRepository, embedEl: HT
   const engine = new DrawingEngine(drawingContainer, box0.w, box0.h, toolManager);
   engine.loadStrokes(handle ? handle.getStrokes() : file.strokes);
   engine.setDisplaySize(box0.w, box0.h);
-  engine.fitReferenceSize(refFile().width, refFile().height, 8, maxFitScale);
+  const fitAll = () => engine.fitReferenceSize(refFile().width, refFile().height, 0, maxFitScale, EMBED_FIT_MARGIN);
+  fitAll();
   engine.render();
 
-  // A sibling surface committing notifies us: reload the canonical strokes and repaint the
-  // static layer, KEEPING our own view transform (no re-fit/re-centre on refresh). We never
-  // persist in response to a notification — only commit writes (no save feedback loop).
+  // A sibling surface committing notifies us (the drawing changed in another view): reload the
+  // canonical strokes and repaint. Our view transform is KEPT while the drawing still fits in
+  // this frame, so edits elsewhere never rescale it; once it no longer fits, re-fit (debounced)
+  // so the whole drawing shows at its own proportions. The embed/node element is never resized.
+  // Our own strokes never notify us (the store skips the committing surface), so nothing moves
+  // while drawing here. We never persist in response to a notification (no save feedback loop).
+  let refitTimer = 0;
   if (handle) {
     handle.subscribe(() => {
       engine.loadStrokes(handle.getStrokes());
       engine.staticDirty = true;
       engine.requestRender();
+      if (engine.contentFitsView()) return;
+      window.clearTimeout(refitTimer);
+      refitTimer = window.setTimeout(() => {
+        if (strokeActive || engine.contentFitsView()) return;
+        fitAll();
+      }, 250);
     });
   }
 
@@ -191,7 +205,7 @@ export async function mountBlackboardEmbed(repo: IDrawingRepository, embedEl: HT
     } else {
       const b = hostBox();
       engine.setDisplaySize(b.w, b.h);
-      engine.fitReferenceSize(refFile().width, refFile().height, 8, maxFitScale);
+      fitAll();
     }
   });
   ro.observe(drawingContainer);
@@ -363,6 +377,7 @@ export async function mountBlackboardEmbed(repo: IDrawingRepository, embedEl: HT
     for (const l of docListeners) {
       if (l.type === '__observer__') { l.fn(null); } else { activeDocument.removeEventListener(l.type, l.fn, l.capture); }
     }
+    window.clearTimeout(refitTimer);
     embedEl.removeEventListener('touchstart', blockScribble);
     embedEl.removeEventListener('touchmove', blockScribble);
     surfaceManager?.unregister(surface);
