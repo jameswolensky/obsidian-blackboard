@@ -180,7 +180,22 @@ describe('mountBlackboardEmbed – document-level geometric Scribble guard', () 
   let filePath: string;
   let settings: PluginSettings;
   let embedEl: HTMLElement;
+  let viewContent: HTMLElement;
+  let host: HTMLElement;
   let cleanup: (() => void) | undefined;
+
+  // The real DOM (Obsidian 1.13 Live Preview): the embed sits inside the note's
+  // .markdown-source-view, which sits inside the view's .view-content. Obsidian's own chrome
+  // (tab bar, view header, notices) lives outside .view-content.
+  function mountHost(hostCls: string): void {
+    viewContent = document.createElement('div');
+    viewContent.className = 'view-content';
+    host = document.createElement('div');
+    host.className = hostCls;
+    viewContent.appendChild(host);
+    document.body.appendChild(viewContent);
+    host.appendChild(embedEl);
+  }
 
   // jsdom has no real Touch; a stylus is simulated by a plain object exposing the
   // touchType + client coordinates the guard reads off touches[0].
@@ -212,13 +227,13 @@ describe('mountBlackboardEmbed – document-level geometric Scribble guard', () 
     filePath = 'test.bb';
     settings = makeSettings();
     embedEl = makeEmbed();
-    document.body.appendChild(embedEl);
+    mountHost('markdown-source-view');
   });
 
   afterEach(() => {
     if (cleanup) cleanup();
     cleanup = undefined;
-    if (embedEl.parentElement) embedEl.parentElement.removeChild(embedEl);
+    viewContent.remove();
   });
 
   it('registers a capture-phase non-passive touchstart/touchmove guard on document', async () => {
@@ -242,13 +257,12 @@ describe('mountBlackboardEmbed – document-level geometric Scribble guard', () 
     // A sibling element (not the drawing container) is the DOM target — the element-level
     // guards never fire, so only the document-level geometric guard can prevent default.
     const sibling = document.createElement('div');
-    document.body.appendChild(sibling);
+    host.appendChild(sibling);
 
     // Coordinates inside the embed bounds (the gap near the top edge, above the container).
     const e = dispatchStylusTouch(sibling, { x: 250, y: 105 }, 'stylus');
 
     expect(e.defaultPrevented).toBe(true);
-    document.body.removeChild(sibling);
   });
 
   it('QA2: suppresses a touch over the embed even when NOT reported as a stylus', async () => {
@@ -257,12 +271,11 @@ describe('mountBlackboardEmbed – document-level geometric Scribble guard', () 
     cleanup = await mountBlackboardEmbed(repo, embedEl, filePath, settings);
     stubEmbedRect();
     const sibling = document.createElement('div');
-    document.body.appendChild(sibling);
+    host.appendChild(sibling);
 
     const e = dispatchStylusTouch(sibling, { x: 250, y: 150 }, 'direct'); // inside embed, non-stylus
 
     expect(e.defaultPrevented).toBe(true);
-    document.body.removeChild(sibling);
   });
 
   it('prevents a stylus touch on the host contenteditable within 12px of the embed edge', async () => {
@@ -272,12 +285,12 @@ describe('mountBlackboardEmbed – document-level geometric Scribble guard', () 
     // Stand-in for the surrounding note's contenteditable; the pencil lands just outside the
     // embed's top border but within the 12px Scribble activation slop.
     const contentEditable = document.createElement('div');
-    document.body.appendChild(contentEditable);
+    contentEditable.contentEditable = 'true';
+    host.appendChild(contentEditable);
 
     const e = dispatchStylusTouch(contentEditable, { x: 250, y: 92 }, 'stylus');
 
     expect(e.defaultPrevented).toBe(true);
-    document.body.removeChild(contentEditable);
   });
 
   it('does NOT prevent a finger touch well outside the expanded embed rect', async () => {
@@ -312,14 +325,94 @@ describe('mountBlackboardEmbed – document-level geometric Scribble guard', () 
     cleanup();
     cleanup = undefined;
 
-    const elsewhere = document.createElement('div');
-    document.body.appendChild(elsewhere);
+    const inHost = document.createElement('div');
+    host.appendChild(inHost);
 
     // After unmount the geometric guard must no longer prevent default for an in-rect stylus.
-    const e = dispatchStylusTouch(elsewhere, { x: 250, y: 105 }, 'stylus');
+    const e = dispatchStylusTouch(inHost, { x: 250, y: 105 }, 'stylus');
 
     expect(e.defaultPrevented).toBe(false);
-    document.body.removeChild(elsewhere);
+  });
+
+  it("does NOT prevent a tap on Obsidian's tab bar even when it lies inside the embed's rect", async () => {
+    cleanup = await mountBlackboardEmbed(repo, embedEl, filePath, settings);
+    stubEmbedRect();
+    // A zoomed Canvas or a tall embed can extend under the tab bar / view header; their
+    // taps must still produce a click.
+    const tab = document.createElement('div');
+    tab.className = 'workspace-tab-header';
+    document.body.appendChild(tab);
+
+    const e = dispatchStylusTouch(tab, { x: 250, y: 150 }, 'direct');
+
+    expect(e.defaultPrevented).toBe(false);
+    tab.remove();
+  });
+
+  it('does NOT prevent a tap on an Obsidian notice inside the embed rect', async () => {
+    cleanup = await mountBlackboardEmbed(repo, embedEl, filePath, settings);
+    stubEmbedRect();
+    const notice = document.createElement('div');
+    notice.className = 'notice';
+    document.body.appendChild(notice);
+
+    const e = dispatchStylusTouch(notice, { x: 250, y: 150 }, 'direct');
+
+    expect(e.defaultPrevented).toBe(false);
+    notice.remove();
+  });
+
+  it('reading view: prevents a stylus touch on the note text within 12px of the embed', async () => {
+    viewContent.remove();
+    embedEl = makeEmbed();
+    mountHost('markdown-preview-view');
+    cleanup = await mountBlackboardEmbed(repo, embedEl, filePath, settings);
+    stubEmbedRect();
+    const p = document.createElement('p');
+    host.appendChild(p);
+
+    const e = dispatchStylusTouch(p, { x: 250, y: 92 }, 'stylus');
+
+    expect(e.defaultPrevented).toBe(true);
+  });
+
+  it('Canvas: prevents a touch inside the node, but not on the Canvas controls outside it', async () => {
+    viewContent.remove();
+    embedEl = makeEmbed();
+    viewContent = document.createElement('div');
+    viewContent.className = 'view-content';
+    const wrapper = document.createElement('div');
+    wrapper.className = 'canvas-wrapper';
+    const node = document.createElement('div');
+    node.className = 'canvas-node';
+    const controls = document.createElement('div');
+    controls.className = 'canvas-controls';
+    const zoomIn = document.createElement('div');
+    zoomIn.className = 'canvas-control-item';
+    controls.appendChild(zoomIn);
+    node.appendChild(embedEl);
+    wrapper.append(node, controls);
+    viewContent.appendChild(wrapper);
+    document.body.appendChild(viewContent);
+    cleanup = await mountBlackboardEmbed(repo, embedEl, filePath, settings);
+    stubEmbedRect();
+    const inNode = document.createElement('div');
+    node.appendChild(inNode);
+
+    expect(dispatchStylusTouch(inNode, { x: 250, y: 105 }, 'stylus').defaultPrevented).toBe(true);
+    expect(dispatchStylusTouch(zoomIn, { x: 250, y: 150 }, 'direct').defaultPrevented).toBe(false);
+  });
+
+  it('unknown host: falls back to the view content area rather than narrowing protection', async () => {
+    viewContent.remove();
+    embedEl = makeEmbed();
+    mountHost('some-other-host');
+    cleanup = await mountBlackboardEmbed(repo, embedEl, filePath, settings);
+    stubEmbedRect();
+    const besideHost = document.createElement('div');
+    viewContent.appendChild(besideHost);
+
+    expect(dispatchStylusTouch(besideHost, { x: 250, y: 105 }, 'stylus').defaultPrevented).toBe(true);
   });
 });
 

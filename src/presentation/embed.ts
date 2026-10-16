@@ -332,8 +332,22 @@ export async function mountBlackboardEmbed(repo: IDrawingRepository, embedEl: HT
   // reliably reported as a stylus in the embed, so gating on it let Scribble through. Touches
   // outside the embed rect+margin are left alone so the note still scrolls. (Real-device
   // confirmation only; see tasks.md §4.)
+  //
+  // The guard only acts on touches whose target is inside the host content that holds this
+  // embed (the note's editor or reading view, or the Canvas node). The embed's bounding box is
+  // not clipped to what is visible: in a zoomed Canvas it can extend under Obsidian's own tab
+  // bar, view header, sidebars and notices, and preventDefault on their touchstart cancels the
+  // tap's click, so the whole app stops responding. Unknown hosts fall back to the view's
+  // content area, which still excludes that chrome.
   const SCRIBBLE_EDGE_MARGIN = 12;
+  const guardScope = (): HTMLElement =>
+    embedEl.closest<HTMLElement>('.markdown-source-view, .markdown-preview-view, .canvas-node')
+    ?? embedEl.closest<HTMLElement>('.view-content')
+    ?? embedEl.parentElement
+    ?? embedEl;
   const blockScribbleDoc = (e: TouchEvent) => {
+    const target = e.target as Node | null;
+    if (!target || !guardScope().contains(target)) return;
     const t = e.touches[0] || e.changedTouches[0];
     if (!t) return;
     const rect = embedEl.getBoundingClientRect();
