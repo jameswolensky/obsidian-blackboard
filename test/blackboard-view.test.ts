@@ -565,6 +565,58 @@ describe('BlackboardView', () => {
       expect(engine.beginStroke).not.toHaveBeenCalled();
     });
 
+    // Pointer Events report a pen's eraser (the eraser end or eraser button) as
+    // pointerType 'pen' with button 5 and the buttons bit 32.
+    it('the eraser end of a pen erases instead of drawing, without changing the selected tool', async () => {
+      const view = createView();
+      await view.onOpen();
+      const engine = (view as any).engine;
+      const eraseAt = vi.spyOn(view as any, 'eraseAt');
+      const dc = (view as any).drawingContainer as HTMLElement;
+
+      const down = new PointerEvent('pointerdown', {
+        clientX: 50, clientY: 50, bubbles: true, cancelable: true, pointerType: 'pen', button: 5, buttons: 32,
+      });
+      Object.defineProperty(down, 'target', { value: dc, writable: false });
+      document.dispatchEvent(down);
+      document.dispatchEvent(new PointerEvent('pointermove', {
+        clientX: 60, clientY: 55, bubbles: true, cancelable: true, pointerType: 'pen', button: -1, buttons: 32,
+      }));
+      document.dispatchEvent(new PointerEvent('pointerup', {
+        clientX: 60, clientY: 55, bubbles: true, pointerType: 'pen', button: 5, buttons: 0,
+      }));
+
+      expect(eraseAt).toHaveBeenCalledTimes(2);
+      expect(engine.beginStroke).not.toHaveBeenCalled();
+      expect(engine.addPoint).not.toHaveBeenCalled();
+      expect(engine.endStroke).not.toHaveBeenCalled();
+      expect(engine.toolManager.activeTool).toBe('pen');
+      await view.onClose();
+    });
+
+    it('the pen tip still draws after the eraser end was used', async () => {
+      const view = createView();
+      await view.onOpen();
+      const engine = (view as any).engine;
+      const dc = (view as any).drawingContainer as HTMLElement;
+
+      const erase = new PointerEvent('pointerdown', {
+        clientX: 50, clientY: 50, bubbles: true, cancelable: true, pointerType: 'pen', button: 5, buttons: 32,
+      });
+      Object.defineProperty(erase, 'target', { value: dc, writable: false });
+      document.dispatchEvent(erase);
+      document.dispatchEvent(new PointerEvent('pointerup', { clientX: 50, clientY: 50, bubbles: true, pointerType: 'pen' }));
+
+      const draw = new PointerEvent('pointerdown', {
+        clientX: 50, clientY: 50, bubbles: true, cancelable: true, pointerType: 'pen', button: 0, buttons: 1,
+      });
+      Object.defineProperty(draw, 'target', { value: dc, writable: false });
+      document.dispatchEvent(draw);
+
+      expect(engine.beginStroke).toHaveBeenCalledWith('pen');
+      await view.onClose();
+    });
+
   });
 
   describe('resize handle touch passthrough', () => {

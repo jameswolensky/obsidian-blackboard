@@ -2,6 +2,17 @@ import type { DrawingEngine } from '../infrastructure/canvas-renderer';
 
 export type ToolName = 'pen' | 'highlighter' | 'eraser';
 
+/** Pointer Events report a pen's eraser (the eraser end, or an eraser button) as button 5 and
+ * the buttons bit 32. Those strokes erase whatever tool the toolbar has selected. */
+export function isPenEraser(e: PointerEvent): boolean {
+  return e.pointerType === 'pen' && (e.button === 5 || (e.buttons & 32) !== 0);
+}
+
+/** The tool a stroke uses: the eraser for a pen's eraser end, otherwise the selected tool. */
+export function strokeToolFor(e: PointerEvent, activeTool: ToolName): ToolName {
+  return isPenEraser(e) ? 'eraser' : activeTool;
+}
+
 /**
  * The contract the global floating toolbar drives. Implemented by each drawing
  * surface (the standalone BlackboardView and every Markdown or Canvas embed) over its engine,

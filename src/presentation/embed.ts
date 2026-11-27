@@ -10,7 +10,7 @@ import { inputDebugEnabled, inputDebugLog } from '../dev/input-debug';
 declare const __DEV_BUILD__: boolean;
 import type { SurfaceManager } from './surface-manager';
 import type { DocumentStore, SharedDocumentHandle } from '../application/document-store';
-import { engineSurface } from './drawing-surface';
+import { engineSurface, strokeToolFor, type ToolName } from './drawing-surface';
 
 // Tracked document/observer teardown callbacks. Handlers are registered with concrete event
 // types (PointerEvent, TouchEvent) and observer entries are called with null. Method syntax
@@ -255,6 +255,8 @@ export async function mountBlackboardEmbed(repo: IDrawingRepository, embedEl: HT
   surfaceManager?.setActive(surface);
 
   let strokeActive = false;
+  // The tool the current stroke uses (the eraser when the pen's eraser end is down).
+  let strokeTool: ToolName = 'pen';
 
   function isInsideDrawing(e: PointerEvent): boolean {
     const target = e.target as HTMLElement;
@@ -282,8 +284,7 @@ export async function mountBlackboardEmbed(repo: IDrawingRepository, embedEl: HT
       return;
     }
     const [localX, localY] = engine.screenToDrawing(e.clientX, e.clientY, drawingContainer);
-    const tool = engine.toolManager.activeTool;
-    if (tool === 'eraser') { eraseAt(localX, localY); return; }
+    if (strokeTool === 'eraser') { eraseAt(localX, localY); return; }
     engine.addPoint([localX, localY, e.pressure || 0.5]);
   }
 
@@ -307,8 +308,8 @@ export async function mountBlackboardEmbed(repo: IDrawingRepository, embedEl: HT
     surfaceManager?.setActive(surface);
     surfaceManager?.notifyStrokeStart();
 
-    const tool = engine.toolManager.activeTool;
-    if (tool !== 'eraser') {
+    strokeTool = strokeToolFor(e, engine.toolManager.activeTool);
+    if (strokeTool !== 'eraser') {
       engine.beginStroke(e.pointerType);
     }
     handlePoint(e);
@@ -327,8 +328,7 @@ export async function mountBlackboardEmbed(repo: IDrawingRepository, embedEl: HT
     if (!isDrawingInput(e)) return;
     strokeActive = false;
     e.stopPropagation();
-    const tool = engine.toolManager.activeTool;
-    if (tool !== 'eraser') {
+    if (strokeTool !== 'eraser') {
       engine.endStroke();
     }
     if (__DEV_BUILD__ && inputDebugEnabled()) inputDebugLog(`UP committed total=${engine.strokeManager.strokes.length}`);
