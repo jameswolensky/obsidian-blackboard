@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach, type Mock } from 'vite
 import type { BlackboardFile, PluginSettings } from '../src/domain/entities';
 import type { IDrawingRepository } from '../src/domain/ports';
 import { DEFAULT_PLUGIN_SETTINGS } from '../src/domain/entities';
+import { eraseAtPoint } from '../src/application/eraser-service';
 
 vi.mock('../src/application/file-format', () => ({
   serialize: vi.fn((file: BlackboardFile) => JSON.stringify(file)),
@@ -890,6 +891,33 @@ describe('embed pointer handling', () => {
     document.dispatchEvent(downEvent);
 
     expect(engineInstance.beginStroke).not.toHaveBeenCalled();
+  });
+
+  // Pointer Events report a pen's eraser (the eraser end or eraser button) as
+  // pointerType 'pen' with button 5 and the buttons bit 32.
+  it('the eraser end of a pen erases instead of drawing, without changing the selected tool', async () => {
+    cleanup = await mountBlackboardEmbed(repo, embedEl, filePath, settings);
+    const engineInstance = engineInstances.at(-1)!;
+    const drawingContainer = embedEl.querySelector('.blackboard-drawing-container') as HTMLElement;
+    vi.mocked(eraseAtPoint).mockClear();
+
+    const down = new PointerEvent('pointerdown', {
+      clientX: 50, clientY: 50, bubbles: true, cancelable: true, pointerType: 'pen', button: 5, buttons: 32,
+    });
+    Object.defineProperty(down, 'target', { value: drawingContainer, writable: false });
+    document.dispatchEvent(down);
+    document.dispatchEvent(new PointerEvent('pointermove', {
+      clientX: 60, clientY: 55, bubbles: true, cancelable: true, pointerType: 'pen', button: -1, buttons: 32,
+    }));
+    document.dispatchEvent(new PointerEvent('pointerup', {
+      clientX: 60, clientY: 55, bubbles: true, pointerType: 'pen', button: 5, buttons: 0,
+    }));
+
+    expect(eraseAtPoint).toHaveBeenCalledTimes(2);
+    expect(engineInstance.beginStroke).not.toHaveBeenCalled();
+    expect(engineInstance.addPoint).not.toHaveBeenCalled();
+    expect(engineInstance.endStroke).not.toHaveBeenCalled();
+    expect(engineInstance.toolManager.activeTool).toBe('pen');
   });
 });
 

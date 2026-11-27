@@ -13,7 +13,7 @@ import { inputDebugEnabled, inputDebugLog } from '../dev/input-debug';
 // branch and the src/dev module behind it are eliminated from the bundle).
 declare const __DEV_BUILD__: boolean;
 import type { SurfaceManager } from './surface-manager';
-import { engineSurface, type DrawingSurface } from './drawing-surface';
+import { engineSurface, strokeToolFor, type DrawingSurface, type ToolName } from './drawing-surface';
 
 function dbgTarget(t: EventTarget | null): string {
   const el = t as HTMLElement | null;
@@ -59,6 +59,8 @@ export class BlackboardView extends TextFileView {
   private isEmbedded: boolean = false;
   private docListeners: Array<{ type: string; fn: DocListenerFn; capture: boolean }> = [];
   private strokeActive: boolean = false;
+  /** The tool the current stroke uses (the eraser when the pen's eraser end is down). */
+  private strokeTool: ToolName = 'pen';
   // Standalone view only: the surface fills the pane and is an infinite pan + zoom canvas
   // over the engine's view transform. On open and on resize the drawing is fitted into the
   // pane. Once the user has drawn, panned or zoomed (`userInteracted`), the view stays where
@@ -468,9 +470,7 @@ export class BlackboardView extends TextFileView {
         // Standalone: invert the full pan + zoom view transform (scale and offset).
         [localX, localY] = engine.screenToDrawing(e.clientX, e.clientY, dc);
       }
-      const tool = engine.toolManager.activeTool;
-
-      if (tool === 'eraser') {
+      if (this.strokeTool === 'eraser') {
         this.eraseAt(localX, localY);
         return;
       }
@@ -532,8 +532,8 @@ export class BlackboardView extends TextFileView {
       this.strokeActive = true;
       if (this.surface) this.surfaceManager?.setActive(this.surface);
       this.surfaceManager?.notifyStrokeStart();
-      const tool = engine.toolManager.activeTool;
-      if (tool !== 'eraser') {
+      this.strokeTool = strokeToolFor(e, engine.toolManager.activeTool);
+      if (this.strokeTool !== 'eraser') {
         engine.beginStroke(e.pointerType);
       }
       handlePoint(e);
@@ -607,8 +607,7 @@ export class BlackboardView extends TextFileView {
       if (!isDrawingInput(e)) return;
       this.strokeActive = false;
       e.stopPropagation();
-      const tool = engine.toolManager.activeTool;
-      if (tool !== 'eraser') {
+      if (this.strokeTool !== 'eraser') {
         engine.endStroke();
         this.persist();
       }
